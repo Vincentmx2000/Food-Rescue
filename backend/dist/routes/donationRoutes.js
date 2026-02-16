@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const donationController_1 = require("../controllers/donationController");
+const donationValidator_1 = require("../validators/donationValidator");
+const validate_1 = require("../middlewares/validate");
+const auth_1 = require("../middlewares/auth");
+const User_1 = require("../models/User");
+const cloudinary_1 = require("../config/cloudinary");
+const router = (0, express_1.Router)();
+router.use(auth_1.protect);
+router.post('/', (0, auth_1.authorize)(User_1.UserRole.DONOR), cloudinary_1.upload.array('images', 5), donationValidator_1.createDonationValidator, validate_1.validate, donationController_1.createDonation);
+router.get('/my-donations', (0, auth_1.authorize)(User_1.UserRole.DONOR), donationController_1.getMyDonations);
+router.get('/available', (0, auth_1.authorize)(User_1.UserRole.NGO, User_1.UserRole.ADMIN, User_1.UserRole.VOLUNTEER), donationController_1.getAvailableDonations);
+router.get('/:id', donationController_1.getDonationDetails);
+router.patch('/:id', donationController_1.updateDonation);
+router.delete('/:id', (0, auth_1.authorize)(User_1.UserRole.DONOR), donationController_1.deleteDonation);
+exports.default = router;

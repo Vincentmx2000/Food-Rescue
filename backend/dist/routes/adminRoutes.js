@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const adminController_1 = require("../controllers/adminController");
+const auth_1 = require("../middlewares/auth");
+const User_1 = require("../models/User");
+const router = (0, express_1.Router)();
+router.use(auth_1.protect);
+router.use((0, auth_1.authorize)(User_1.UserRole.ADMIN));
+router.get('/stats', adminController_1.getPlatformStats);
+router.get('/users', adminController_1.getAllUsers);
+router.patch('/users/:userId/toggle-block', adminController_1.toggleUserBlock);
+router.get('/donations', adminController_1.getAllDonations);
+exports.default = router;

@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const ngoController_1 = require("../controllers/ngoController");
+const auth_1 = require("../middlewares/auth");
+const User_1 = require("../models/User");
+const cloudinary_1 = require("../config/cloudinary");
+const router = (0, express_1.Router)();
+router.use(auth_1.protect);
+router.use((0, auth_1.authorize)(User_1.UserRole.NGO));
+router.get('/my-claims', ngoController_1.getMyClaims);
+router.post('/claim', ngoController_1.claimDonation);
+router.post('/assign-volunteer', ngoController_1.assignVolunteer);
+router.post('/distribution-proof', cloudinary_1.upload.array('images', 5), ngoController_1.uploadDistributionProof);
+exports.default = router;

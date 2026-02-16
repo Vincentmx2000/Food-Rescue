@@ -1,0 +1,50 @@
+
+--- Volunteer Tasks ---
+Task ID: 698d9a9031573b92fd80c04d
+  Donation: 698d98a5393deca80d487d77
+  Volunteer: null
+  Status: DELIVERED
+------------------------
+Task ID: 6990aa3078bb5a789c632385
+  Donation: 69909cd9dcd1dfee83fa00eb
+  Volunteer: 698d9b283f88557db465f497
+  Status: ASSIGNED
+------------------------
+Task ID: 6990b39e78bb5a789c632387
+  Donation: 6990ad75b34293e34b940e93
+  Volunteer: 698d9b283f88557db465f497
+  Status: DISTRIBUTED
+------------------------
+
+--- Donations ---
+Donation ID: 698d8fe0bb74b8f8cb9f593d
+  Status: DISTRIBUTED
+  Assigned Volunteer: undefined
+------------------------
+Donation ID: 698d98a5393deca80d487d77
+  Status: DISTRIBUTED
+  Assigned Volunteer: undefined
+------------------------
+Donation ID: 698da04dc1f7ffa358aa90f3
+  Status: DISTRIBUTED
+  Assigned Volunteer: undefined
+------------------------
+Donation ID: 69909cd9dcd1dfee83fa00eb
+  Status: VOLUNTEER_ASSIGNED
+  Assigned Volunteer: 698d9b283f88557db465f497
+------------------------
+Donation ID: 6990ad75b34293e34b940e93
+  Status: DISTRIBUTED
+  Assigned Volunteer: 698d9b283f88557db465f497
+------------------------
+Donation ID: 6991e0a2920ce7e14e3987d7
+  Status: AVAILABLE
+  Assigned Volunteer: undefined
+------------------------
+
+--- Users ---
+User ID: 698ab171aeca263a1d705f9f Name: Test User Role: DONOR
+User ID: 698ab64415a084356387e62d Name: vincent Role: DONOR
+User ID: 698ac08e727648e7181bd121 Name: Danirasa Role: NGO
+User ID: 698d9b283f88557db465f497 Name: Durai raj Role: VOLUNTEER
+User ID: 6990a73ea45fc4f337f3fee6 Name: Wise Man Role: ADMIN

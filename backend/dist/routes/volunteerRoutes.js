@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../middlewares/auth");
+const User_1 = require("../models/User");
+const volunteerController_1 = require("../controllers/volunteerController");
+const router = (0, express_1.Router)();
+router.use(auth_1.protect);
+router.use((0, auth_1.authorize)(User_1.UserRole.VOLUNTEER));
+router.get('/tasks', volunteerController_1.getAssignedTasks);
+router.get('/available-tasks', volunteerController_1.getAvailableTasks);
+router.post('/accept-task', volunteerController_1.acceptTask);
+router.patch('/update-status', volunteerController_1.updateTaskStatus);
+router.get('/history', volunteerController_1.getRescueHistory);
+exports.default = router;
