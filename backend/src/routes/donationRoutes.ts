@@ -14,7 +14,7 @@ router.post('/', authorize(UserRole.DONOR), upload.array('images', 5), createDon
 router.get('/my-donations', authorize(UserRole.DONOR), getMyDonations);
 router.get('/available', authorize(UserRole.NGO, UserRole.ADMIN, UserRole.VOLUNTEER), getAvailableDonations);
 router.get('/:id', getDonationDetails);
-router.patch('/:id', updateDonation);
+router.patch('/:id', upload.array('images', 5), updateDonation);
 router.delete('/:id', authorize(UserRole.DONOR), deleteDonation);
 
 export default router;

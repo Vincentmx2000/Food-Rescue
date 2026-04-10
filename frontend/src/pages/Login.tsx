@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
@@ -14,6 +15,7 @@ const Login: React.FC = () => {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,15 +33,12 @@ const Login: React.FC = () => {
                 case 'ngo':
                     navigate('/ngo/dashboard');
                     break;
-                case 'admin':
-                    navigate('/admin/dashboard');
-                    break;
                 case 'volunteer':
                     navigate('/volunteer/dashboard');
                     break;
             }
         } catch (err: any) {
-            setError(err.message || 'Login failed. Please try again.');
+            setError(err.response?.data?.message || err.message || 'Login failed. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -57,7 +56,7 @@ const Login: React.FC = () => {
                 <form onSubmit={handleSubmit} className="space-y-5">
                     {/* Role Selection - Keeping this but styling it cleaner */}
                     <div className="bg-slate-50 p-1 rounded-xl flex overflow-x-auto">
-                        {['donor', 'ngo', 'admin', 'volunteer'].map((role) => (
+                        {['donor', 'ngo', 'volunteer'].map((role) => (
                             <button
                                 key={role}
                                 type="button"
@@ -80,7 +79,7 @@ const Login: React.FC = () => {
                             required
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange transition-all placeholder:text-slate-400"
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all placeholder:text-slate-400"
                             placeholder="name@example.com"
                         />
                     </div>
@@ -88,14 +87,23 @@ const Login: React.FC = () => {
                     {/* Password */}
                     <div className="space-y-1">
                         <label className="text-sm font-medium text-slate-600 ml-1">Password</label>
-                        <input
-                            type="password"
-                            required
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-orange/20 focus:border-primary-orange transition-all placeholder:text-slate-400"
-                            placeholder="••••••••"
-                        />
+                        <div className="relative group">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                required
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all placeholder:text-slate-400 group-hover:border-slate-300"
+                                placeholder="••••••••"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                            >
+                                {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Error Message */}
@@ -109,7 +117,7 @@ const Login: React.FC = () => {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-3.5 bg-[#FF8C00] hover:bg-[#E67E00] text-white font-bold rounded-xl shadow-lg shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl shadow-lg shadow-primary-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? 'Signing in...' : 'Sign In'}
                     </button>
@@ -143,16 +151,11 @@ const Login: React.FC = () => {
                     {/* Register Link */}
                     <p className="text-center text-sm text-slate-500 mt-6">
                         Don't have an account?{' '}
-                        <Link to={formData.role === 'volunteer' ? '/register-volunteer' : '/register'} className="text-[#FF8C00] font-bold hover:underline">
+                        <Link to={formData.role === 'volunteer' ? '/register-volunteer' : '/register'} className="text-primary-600 font-bold hover:underline">
                             Register here
                         </Link>
                     </p>
 
-                    {/* Demo Credentials Hint (collapsible or discreet) */}
-                    <div className="mt-6 p-4 bg-slate-50 rounded-xl text-xs text-slate-500 text-center">
-                        <p className="font-medium mb-1">Demo Credentials:</p>
-                        <p>{formData.role}@example.com / password123</p>
-                    </div>
                 </form>
             </div>
         </div>

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
-import { FiUser, FiMail, FiPhone, FiMapPin, FiClock, FiSave, FiPackage, FiCheckCircle, FiAlertCircle, FiLock, FiLogOut, FiUsers, FiGlobe, FiBriefcase, FiCamera } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiMapPin, FiClock, FiSave, FiPackage, FiCheckCircle, FiAlertCircle, FiLock, FiLogOut, FiUsers, FiGlobe, FiBriefcase, FiCamera, FiX } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../../services/api';
+import Modal from '../../components/Modal';
+import type { DashboardStats } from '../../types';
 
 const NGOProfile: React.FC = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, refreshUser } = useAuth();
     const navigate = useNavigate();
 
     // Local state for form fields
@@ -28,32 +31,66 @@ const NGOProfile: React.FC = () => {
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [logoImage, setLogoImage] = useState<string | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-    // Mock stats data
-    const stats = {
-        totalPickups: 45,
-        successfulDistributions: 42,
-        pendingDistributions: 3,
-        lastDistribution: '2023-11-01',
-    };
+    const [stats, setStats] = useState<DashboardStats & { lastDistribution?: string }>({
+        totalDonations: 0,
+        completedDonations: 0,
+        activeDonations: 0,
+        lastDistribution: undefined
+    });
+    const [statsLoading, setStatsLoading] = useState(true);
+
+    // Password change state
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [passwordData, setPasswordData] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [passwordSuccess, setPasswordSuccess] = useState(false);
+    const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
 
     useEffect(() => {
         if (user) {
-            // In a real app, we might fetch more detailed profile info here
             setFormData({
-                organizationName: user.organization || user.name || 'Hope Foundation',
+                organizationName: user.organization || user.name || '',
                 registrationNumber: 'NGO-reg-12345',
                 ngoType: 'Charity',
                 establishedYear: '2015',
-                phone: user.phone || '987-654-3210',
+                phone: user.phone || '',
                 altPhone: '',
-                city: 'Chicago',
-                state: 'IL',
-                address: user.address || '456 Charity Lane, Suite 100',
-                serviceArea: 'Downtown & Suburbs',
-                activeWorkers: '15',
-                preferredPickupTime: '09:00 AM - 06:00 PM',
+                city: '',
+                state: '',
+                address: user.address || '',
+                serviceArea: '',
+                activeWorkers: '',
+                preferredPickupTime: 'Anytime',
             });
+
+            const fetchStats = async () => {
+                try {
+                    const [statsData, claims] = await Promise.all([
+                        api.getStats(user.id, user.role),
+                        api.getDonations({ claimedBy: user.id })
+                    ]);
+
+                    const completedClaims = claims.filter((c: any) => c.status === 'DISTRIBUTED');
+                    const lastDate = completedClaims.length > 0 ? completedClaims[0].completedAt : undefined;
+
+                    setStats({
+                        ...statsData,
+                        lastDistribution: lastDate
+                    });
+                } catch (error) {
+                    console.error('Failed to fetch NGO stats', error);
+                } finally {
+                    setStatsLoading(false);
+                }
+            };
+
+            fetchStats();
         }
     }, [user]);
 
@@ -76,7 +113,7 @@ const NGOProfile: React.FC = () => {
         }
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setMessage(null);
 
@@ -86,16 +123,69 @@ const NGOProfile: React.FC = () => {
             return;
         }
 
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            const updatedUser = await api.updateUserProfile({
+                organization: formData.organizationName,
+                ngoType: formData.ngoType,
+                establishedYear: formData.establishedYear,
+                phone: formData.phone,
+                altPhone: formData.altPhone,
+                address: formData.address,
+                city: formData.city,
+                state: formData.state,
+                serviceArea: formData.serviceArea,
+                activeWorkers: formData.activeWorkers,
+                preferredTime: formData.preferredPickupTime
+            });
+
+            // Update local storage so useAuth can pick it up
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            refreshUser();
+
             setMessage({ type: 'success', text: 'Organization profile updated successfully!' });
             setIsEditing(false);
-        }, 1000);
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to update profile' });
+        }
     };
 
     const handleLogout = () => {
         logout();
         navigate('/');
+    };
+
+    const handlePasswordChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPasswordError(null);
+        setPasswordSuccess(false);
+
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            setPasswordError('New passwords do not match');
+            return;
+        }
+
+        if (passwordData.newPassword.length < 6) {
+            setPasswordError('Password must be at least 6 characters long');
+            return;
+        }
+
+        setIsPasswordSubmitting(true);
+        try {
+            await api.updatePassword({
+                currentPassword: passwordData.currentPassword,
+                newPassword: passwordData.newPassword
+            });
+            setPasswordSuccess(true);
+            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            setTimeout(() => {
+                setIsPasswordModalOpen(false);
+                setPasswordSuccess(false);
+            }, 2000);
+        } catch (error: any) {
+            setPasswordError(error.response?.data?.message || 'Failed to update password');
+        } finally {
+            setIsPasswordSubmitting(false);
+        }
     };
 
     return (
@@ -107,7 +197,7 @@ const NGOProfile: React.FC = () => {
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row items-center md:items-start md:space-x-8 mb-8 animate-fade-in">
                     <div className="relative group">
-                        <div className={`w-32 h-32 rounded-xl flex items-center justify-center text-white text-4xl font-bold shadow-lg mb-4 md:mb-0 overflow-hidden ${!logoImage ? 'bg-gradient-to-br from-secondary-400 to-secondary-600' : 'bg-white'}`}>
+                        <div className={`w-32 h-32 rounded-xl flex items-center justify-center text-white text-4xl font-bold shadow-lg mb-4 md:mb-0 overflow-hidden ${!logoImage ? 'bg-gradient-to-br from-secondary-400 to-secondary-600' : 'bg-white'} cursor-zoom-in`} onClick={() => logoImage && setSelectedImage(logoImage)}>
                             {logoImage ? (
                                 <img src={logoImage} alt="Organization Logo" className="w-full h-full object-cover" />
                             ) : (
@@ -138,7 +228,9 @@ const NGOProfile: React.FC = () => {
                             <span className="bg-secondary-50 text-secondary-700 px-2 py-0.5 rounded text-sm border border-secondary-100">
                                 {formData.ngoType}
                             </span>
-                            <span>• Verified Organization</span>
+                            <span className={user?.isVerified ? 'text-blue-600' : 'text-slate-400'}>
+                                • {user?.isVerified ? 'Verified Organization' : 'Pending Verification'}
+                            </span>
                         </p>
                         <div className="mt-3 flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-slate-500">
                             <div className="flex items-center gap-1">
@@ -408,23 +500,37 @@ const NGOProfile: React.FC = () => {
                                 </h2>
                             </div>
                             <div className="p-6 space-y-4">
-                                <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                                    <span className="text-slate-600">Total Pickups</span>
-                                    <span className="font-bold text-slate-900 text-lg">{stats.totalPickups}</span>
-                                </div>
-                                <div className="flex justify-between items-center p-3 bg-success-50 rounded-lg">
-                                    <span className="text-success-800">Successful</span>
-                                    <span className="font-bold text-success-800 text-lg">{stats.successfulDistributions}</span>
-                                </div>
-                                <div className="flex justify-between items-center p-3 bg-warning-50 rounded-lg">
-                                    <span className="text-warning-800">Pending</span>
-                                    <span className="font-bold text-warning-800 text-lg">{stats.pendingDistributions}</span>
-                                </div>
-                                <div className="pt-2 border-t border-slate-100">
-                                    <p className="text-xs text-center text-slate-500">
-                                        Last distribution on {new Date(stats.lastDistribution).toLocaleDateString()}
-                                    </p>
-                                </div>
+                                {statsLoading ? (
+                                    <div className="flex justify-center py-4">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                                            <span className="text-slate-600">Total Pickups</span>
+                                            <span className="font-bold text-slate-900 text-lg">{stats.totalDonations || 0}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-success-50 rounded-lg">
+                                            <span className="text-success-800">Successful</span>
+                                            <span className="font-bold text-success-800 text-lg">{stats.completedDonations || 0}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-warning-50 rounded-lg">
+                                            <span className="text-warning-800">Active</span>
+                                            <span className="font-bold text-warning-800 text-lg">{stats.activeDonations || 0}</span>
+                                        </div>
+                                        {stats.lastDistribution && (
+                                            <div className="pt-2 border-t border-slate-100">
+                                                <p className="text-xs text-center text-slate-500">
+                                                    Last distribution on {new Date(stats.lastDistribution).toLocaleDateString([], {
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        year: 'numeric'
+                                                    })}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -436,12 +542,11 @@ const NGOProfile: React.FC = () => {
                                 </h2>
                             </div>
                             <div className="p-6 space-y-3">
-                                <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 text-slate-700 transition-colors group">
+                                <button
+                                    onClick={() => setIsPasswordModalOpen(true)}
+                                    className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 text-slate-700 transition-colors group"
+                                >
                                     <span className="font-medium group-hover:text-primary-600">Change Password</span>
-                                    <span className="text-slate-400">→</span>
-                                </button>
-                                <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 text-slate-700 transition-colors group">
-                                    <span className="font-medium group-hover:text-primary-600">Notification Preferences</span>
                                     <span className="text-slate-400">→</span>
                                 </button>
                                 <div className="pt-2">
@@ -459,6 +564,87 @@ const NGOProfile: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Change Password Modal */}
+            <Modal
+                isOpen={isPasswordModalOpen}
+                onClose={() => setIsPasswordModalOpen(false)}
+                title="Change Password"
+            >
+                <form onSubmit={handlePasswordChange} className="space-y-4">
+                    {passwordError && (
+                        <div className="p-3 bg-danger-50 text-danger-700 rounded-lg text-sm flex items-center gap-2">
+                            <FiAlertCircle />
+                            {passwordError}
+                        </div>
+                    )}
+                    {passwordSuccess && (
+                        <div className="p-3 bg-success-50 text-success-700 rounded-lg text-sm flex items-center gap-2">
+                            <FiCheckCircle />
+                            Password updated successfully!
+                        </div>
+                    )}
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Password</label>
+                        <input
+                            type="password"
+                            required
+                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                            value={passwordData.currentPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">New Password</label>
+                        <input
+                            type="password"
+                            required
+                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                            value={passwordData.newPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Confirm New Password</label>
+                        <input
+                            type="password"
+                            required
+                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                            value={passwordData.confirmPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={isPasswordSubmitting}
+                        className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-lg shadow-lg shadow-primary-500/30 transition-all disabled:opacity-50 mt-2"
+                    >
+                        {isPasswordSubmitting ? 'Updating...' : 'Update Password'}
+                    </button>
+                </form>
+            </Modal>
+
+            {/* Full Image Viewer Modal */}
+            {selectedImage && (
+                <div
+                    className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-10 animate-fade-in"
+                    onClick={() => setSelectedImage(null)}
+                >
+                    <button
+                        className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors bg-white/10 p-4 rounded-full backdrop-blur-md"
+                        onClick={() => setSelectedImage(null)}
+                    >
+                        <FiX size={32} />
+                    </button>
+
+                    <img
+                        src={selectedImage}
+                        alt="Full View"
+                        className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl animate-zoom-in"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 };

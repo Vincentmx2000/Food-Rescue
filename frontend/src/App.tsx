@@ -25,7 +25,10 @@ import VolunteerHistory from './pages/volunteer/VolunteerHistory';
 import VolunteerProfile from './pages/volunteer/VolunteerProfile';
 import RegisterVolunteer from './pages/volunteer/RegisterVolunteer';
 import Register from './pages/Register';
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminRegister from './pages/admin/AdminRegister';
 import SocialSuccess from './pages/SocialSuccess';
+import PublicProfile from './pages/PublicProfile';
 
 function App() {
   return (
@@ -36,8 +39,12 @@ function App() {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/register" element={<AdminRegister />} />
             <Route path="/register-volunteer" element={<RegisterVolunteer />} />
             <Route path="/social-success" element={<SocialSuccess />} />
+            <Route path="/profile/:id" element={<ProtectedRoute><PublicProfile /></ProtectedRoute>} />
+            <Route path="/donation/:id" element={<ProtectedRoute><DonationDetails /></ProtectedRoute>} />
             <Route path="/" element={<LandingPage />} />
 
             {/* Donor Routes */}
@@ -183,6 +190,10 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Redirect common singular mistakes */}
+            <Route path="/admin/user" element={<Navigate to="/admin/users" replace />} />
+            <Route path="/admin/donation" element={<Navigate to="/admin/donations" replace />} />
 
             {/* Catch all - redirect to login */}
             <Route path="*" element={<Navigate to="/" replace />} />

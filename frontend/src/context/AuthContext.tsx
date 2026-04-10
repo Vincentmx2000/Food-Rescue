@@ -9,22 +9,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check if user is logged in on mount
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            let parsedUser = JSON.parse(storedUser);
-            // Ensure role is lowercase for frontend consistency
-            if (parsedUser.role) {
-                parsedUser.role = parsedUser.role.toLowerCase();
-            }
+        const initializeAuth = async () => {
+            const storedUser = localStorage.getItem('user');
+            const token = localStorage.getItem('authToken');
 
-            // Normalize even on mount to handle older session data
-            if (parsedUser._id && !parsedUser.id) {
-                parsedUser.id = parsedUser._id;
+            if (storedUser && token) {
+                try {
+                    let parsedUser = JSON.parse(storedUser);
+                    setUser(parsedUser); // Immediate set for responsiveness
+
+                    // Fetch fresh data from backend
+                    const freshUser = await api.getUserProfile(parsedUser.id);
+                    setUser(freshUser);
+                    localStorage.setItem('user', JSON.stringify(freshUser));
+                } catch (error) {
+                    console.error('Failed to restore session', error);
+                    // If token expired, we might want to logout, but for now we fallback to storedUser
+                }
             }
-            setUser(parsedUser);
-        }
-        setLoading(false);
+            setLoading(false);
+        };
+
+        initializeAuth();
     }, []);
 
     const login = async (email: string, password: string, role: string) => {
@@ -70,14 +76,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
 
-    const logout = () => {
+    const logout = (redirectPath: string = '/') => {
         setUser(null);
         localStorage.removeItem('user');
         localStorage.removeItem('authToken');
         // Clear any other cached data
         sessionStorage.clear();
-        // Force reload to clear all state
-        window.location.href = '/';
+        // Force reload to clear all state and redirect
+        window.location.href = redirectPath;
     };
 
     const setAuthData = (data: { user: any; token: string }) => {
@@ -87,6 +93,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('authToken', data.token);
     };
 
+    const refreshUser = () => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        }
+    };
 
     return (
         <AuthContext.Provider
@@ -96,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 register,
                 logout,
                 setAuthData,
+                refreshUser,
                 isAuthenticated: !!user,
                 loading,
             }}

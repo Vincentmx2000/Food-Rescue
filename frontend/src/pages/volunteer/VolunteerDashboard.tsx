@@ -1,30 +1,38 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FiClock, FiMapPin, FiPackage } from 'react-icons/fi';
+import { FiClock, FiCheckCircle, FiPackage } from 'react-icons/fi';
 import Navbar from '../../components/Navbar';
 import { api } from '../../services/api';
+
+import DonationCard from '../../components/DonationCard';
 
 const VolunteerDashboard: React.FC = () => {
     const { user } = useAuth();
     const [availableTasks, setAvailableTasks] = useState<any[]>([]);
+    const [stats, setStats] = useState<any>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchTasks = async () => {
+        const fetchData = async () => {
             if (!user) {
                 setLoading(false);
                 return;
             }
             try {
-                const tasks = await api.getAvailableTasks();
-                setAvailableTasks(tasks.slice(0, 3)); // Show top 3
+                const [tasks, statsData] = await Promise.all([
+                    api.getAvailableTasks(),
+                    api.getStats(user.id, user.role)
+                ]);
+                setAvailableTasks(tasks.slice(0, 3));
+                setStats(statsData);
             } catch (error) {
-                console.error('Failed to fetch tasks', error);
+                console.error('Failed to fetch data', error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchTasks();
+        fetchData();
     }, [user]);
 
     if (loading) {
@@ -41,97 +49,97 @@ const VolunteerDashboard: React.FC = () => {
     return (
         <div className="min-h-screen bg-slate-50">
             <Navbar />
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-slide-up">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-slate-800">
-                        Welcome back, <span className="text-primary-600">{user?.name}</span>!
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <div className="mb-12 animate-fade-in text-center md:text-left">
+                    <h1 className="text-5xl font-black text-slate-900 mb-3 tracking-tight">
+                        Welcome back, <span className="text-primary-600">{user?.name}</span>! 👋
                     </h1>
-                    <p className="text-slate-600 mt-2">Ready to make a difference today?</p>
-                    <div className="flex gap-4 mt-4">
-                        <button
-                            onClick={() => window.location.href = '/volunteer/deliveries'}
-                            className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl shadow-lg shadow-primary-500/20 active:scale-95 transition-all"
+                    <p className="text-xl text-slate-500 font-medium tracking-tight">Your help makes a real Difference. Ready for your next mission?</p>
+
+                    <div className="flex flex-wrap gap-6 mt-10 justify-center md:justify-start">
+                        <Link
+                            to="/volunteer/deliveries"
+                            className="px-10 py-5 bg-primary-600 hover:bg-primary-700 text-white font-black rounded-[2rem] shadow-2xl shadow-primary-500/30 active:scale-[0.98] transition-all uppercase tracking-[0.2em] text-xs"
                         >
-                            Find Deliveries
-                        </button>
-                        <button
-                            onClick={() => window.location.href = '/volunteer/history'}
-                            className="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all"
+                            Find New Missions
+                        </Link>
+                        <Link
+                            to="/volunteer/history"
+                            className="px-10 py-5 bg-white border border-slate-100 text-slate-700 font-black rounded-[2rem] hover:bg-slate-50 transition-all uppercase tracking-[0.2em] text-xs shadow-xl shadow-slate-200/20"
                         >
-                            My Deliveries
-                        </button>
+                            Mission History
+                        </Link>
                     </div>
                 </div>
 
                 {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="stat-card">
-                        <div className="flex items-center space-x-4">
-                            <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                                <FiPackage className="w-6 h-6" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16 animate-slide-up">
+                    <div className="stat-card p-8 bg-primary-600 border-0 text-white shadow-2xl shadow-primary-500/20">
+                        <div className="flex items-center space-x-6">
+                            <div className="p-4 rounded-[1.5rem] bg-white/10 backdrop-blur-md border border-white/20">
+                                <FiPackage className="w-8 h-8 text-white" />
                             </div>
                             <div>
-                                <p className="text-sm text-slate-500">Available Deliveries</p>
-                                <p className="text-2xl font-bold text-slate-800">12</p>
+                                <p className="text-sm font-black uppercase tracking-[0.2em] text-primary-100 mb-1">Available Missions</p>
+                                <p className="text-4xl font-black">{stats.pendingDonations || 0}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="stat-card">
-                        <div className="flex items-center space-x-4">
-                            <div className="p-3 rounded-full bg-green-100 text-green-600">
-                                <FiClock className="w-6 h-6" />
+                    <div className="stat-card p-8 bg-white border-0 shadow-xl shadow-slate-200/50">
+                        <div className="flex items-center space-x-6">
+                            <div className="p-4 rounded-[1.5rem] bg-amber-50 text-amber-600">
+                                <FiClock className="w-8 h-8" />
                             </div>
                             <div>
-                                <p className="text-sm text-slate-500">Hours Volunteered</p>
-                                <p className="text-2xl font-bold text-slate-800">24</p>
+                                <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Assigned Missions</p>
+                                <p className="text-4xl font-black text-slate-800">{stats.activeDonations || 0}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="stat-card">
-                        <div className="flex items-center space-x-4">
-                            <div className="p-3 rounded-full bg-orange-100 text-orange-600">
-                                <FiMapPin className="w-6 h-6" />
+                    <div className="stat-card p-8 bg-white border-0 shadow-xl shadow-slate-200/50">
+                        <div className="flex items-center space-x-6">
+                            <div className="p-4 rounded-[2rem] bg-emerald-50 text-emerald-600">
+                                <FiCheckCircle className="w-10 h-10" />
                             </div>
-                            <div>
-                                <p className="text-sm text-slate-500">Area</p>
-                                <p className="text-lg font-semibold text-slate-800">{user?.address || 'Not Set'}</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Completed</p>
+                                <p className="text-4xl font-black text-slate-800">{stats.completedDonations || 0}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Available Pickups Section (Mock) */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                    <h2 className="text-xl font-bold text-slate-800 mb-4">Urgent Pickups Near You</h2>
-                    <div className="space-y-4">
-                        {availableTasks.length === 0 ? (
-                            <div className="text-center py-8">
-                                <p className="text-slate-500">No urgent pickups available at the moment.</p>
-                            </div>
-                        ) : (
-                            availableTasks.map((task: any) => (
-                                <div key={task.id} className="p-4 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors flex justify-between items-center group">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center text-2xl">
-                                            📦
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-slate-800">{task.donationId?.foodType}</h3>
-                                            <p className="text-sm text-slate-500">{task.donationId?.pickupLocation || task.donationId?.address}</p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => window.location.href = `/volunteer/donation/${task.donationId?.id || task.donationId?._id}`}
-                                        className="px-4 py-2 bg-primary-50 text-primary-600 rounded-lg font-medium group-hover:bg-primary-600 group-hover:text-white transition-all"
-                                    >
-                                        View Details
-                                    </button>
-                                </div>
-                            ))
-                        )}
+                {/* Urgent Pickups Section */}
+                <div>
+                    <div className="flex items-center justify-between mb-10">
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Urgent Missions</h2>
+                        <Link
+                            to="/volunteer/deliveries"
+                            className="text-primary-600 font-black text-xs uppercase tracking-[0.2em] hover:text-primary-800 transition-colors"
+                        >
+                            Explore All <span className="ml-2">→</span>
+                        </Link>
                     </div>
+
+                    {availableTasks.length === 0 ? (
+                        <div className="text-center py-20 bg-white rounded-[3rem] border border-dashed border-slate-200">
+                            <FiPackage className="w-20 h-20 text-slate-200 mx-auto mb-6" />
+                            <p className="text-slate-400 text-xl font-bold">No urgent missions at the moment.</p>
+                            <p className="text-slate-400 font-medium mt-2">Check back later for new rescuing opportunities.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                            {availableTasks.map((task: any) => (
+                                <DonationCard
+                                    key={task.id}
+                                    donation={task.donationId}
+                                    linkTo={`/volunteer/donation/${task.donationId?.id || task.donationId?._id}`}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

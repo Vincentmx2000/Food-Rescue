@@ -46,6 +46,10 @@ const normalize = (data: any): any => {
             normalized.id = normalized._id.toString();
         }
 
+        if (normalized.role) {
+            normalized.role = normalized.role.toLowerCase();
+        }
+
         // Map backend fields to frontend expected fields
         if (normalized.address && !normalized.pickupLocation) {
             normalized.pickupLocation = normalized.address;
@@ -57,47 +61,54 @@ const normalize = (data: any): any => {
             normalized.donorName = normalized.donorId.name;
         }
         if (normalized.assignedVolunteer) {
-            normalized.volunteerId = typeof normalized.assignedVolunteer === 'object'
-                ? (normalized.assignedVolunteer.id || normalized.assignedVolunteer._id)
-                : normalized.assignedVolunteer;
+            if (typeof normalized.assignedVolunteer === 'object' && normalized.assignedVolunteer !== null) {
+                normalized.volunteerId = normalized.assignedVolunteer.id || normalized.assignedVolunteer._id;
+                normalized.volunteerName = normalized.assignedVolunteer.name;
+            } else {
+                normalized.volunteerId = normalized.assignedVolunteer.toString();
+            }
         }
 
         if (normalized.claimedByNGO) {
-            normalized.claimedBy = normalized.claimedByNGO.toString();
-        }
-        if (Array.isArray(normalized.images) && normalized.images.length > 0 && !normalized.imageUrl) {
-            let img = normalized.images[0];
-            if (img.startsWith('uploads/')) {
-                const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
-                img = `${baseUrl}/${img}`;
+            if (typeof normalized.claimedByNGO === 'object' && normalized.claimedByNGO !== null) {
+                normalized.claimedBy = normalized.claimedByNGO.id || normalized.claimedByNGO._id;
+                normalized.claimedByName = normalized.claimedByNGO.organization || normalized.claimedByNGO.name;
+            } else {
+                normalized.claimedBy = normalized.claimedByNGO.toString();
             }
-            normalized.imageUrl = img;
         }
-
-        // Status normalization removed to support new backend enums matches
-        // if (normalized.status === 'AVAILABLE' || normalized.status === 'POSTED') {
-        //     normalized.status = 'pending';
-        // } else if (normalized.status === 'CLAIMED_BY_NGO') {
-        //     normalized.status = 'claimed';
-        // } else if (normalized.status === 'VOLUNTEER_ASSIGNED') {
-        //     normalized.status = 'assigned';
-        // } else if (normalized.status) {
-        //     normalized.status = normalized.status.toUpperCase();
-        // }
+        const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
+        if (Array.isArray(normalized.images)) {
+            normalized.imageUrls = normalized.images.map((img: string) => {
+                const normalizedPath = img.replace(/\\/g, '/');
+                if (normalizedPath.startsWith('uploads/') || !normalizedPath.startsWith('http')) {
+                    if (normalizedPath.startsWith('http')) return normalizedPath;
+                    return `${baseUrl}/${normalizedPath}`;
+                }
+                return normalizedPath;
+            });
+            normalized.imageUrl = normalized.imageUrls[0] || null;
+        } else {
+            normalized.imageUrls = [];
+            normalized.imageUrl = null;
+        }
 
         // Handle distribution proof images - convert to full URLs if needed
         if (Array.isArray(normalized.distributionProofImages) && normalized.distributionProofImages.length > 0) {
             const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
             normalized.distributionProofImages = normalized.distributionProofImages.map((img: string) => {
-                if (img.startsWith('uploads/') || img.startsWith('https://res.cloudinary.com/')) {
-                    return img.startsWith('http') ? img : `${baseUrl}/${img}`;
+                // Handle Windows backslashes
+                const normalizedPath = img.replace(/\\/g, '/');
+                if (normalizedPath.startsWith('uploads/') || !normalizedPath.startsWith('http')) {
+                    if (normalizedPath.startsWith('http')) return normalizedPath;
+                    return `${baseUrl}/${normalizedPath}`;
                 }
-                return img;
+                return normalizedPath;
             });
         }
 
         // Map User.isBlocked to User.status
-        if (normalized.hasOwnProperty('isBlocked')) {
+        if ('isBlocked' in normalized) {
             normalized.status = normalized.isBlocked ? 'blocked' : 'active';
         }
 
@@ -171,7 +182,38 @@ export const api = {
         return response.data;
     },
     updateDonation: async (id: string, updates: any) => {
-        const response = await apiClient.patch(`/donations/${id}`, updates);
+        let payload = updates;
+        let headers: any = {};
+
+        const formData = new FormData();
+        let hasFiles = false;
+
+        Object.keys(updates).forEach(key => {
+            if (key === 'images' && Array.isArray(updates[key])) {
+                updates[key].forEach((img: any) => {
+                    if (img instanceof File) {
+                        formData.append('images', img);
+                        hasFiles = true;
+                    }
+                });
+            } else if (key === 'existingImages' && Array.isArray(updates[key])) {
+                if (updates[key].length === 0) {
+                    formData.append('existingImages', ''); // Signal empty list
+                } else {
+                    updates[key].forEach((img: string) => formData.append('existingImages', img));
+                }
+                hasFiles = true; // Still use FormData if we have existingImages to send
+            } else if (updates[key] !== undefined) {
+                formData.append(key, updates[key]);
+            }
+        });
+
+        if (hasFiles) {
+            payload = formData;
+            headers['Content-Type'] = 'multipart/form-data';
+        }
+
+        const response = await apiClient.patch(`/donations/${id}`, payload, { headers });
         return normalize(response.data.data);
     },
     assignVolunteer: async (donationId: string, volunteerId: string, volunteerName?: string) => {
@@ -186,20 +228,57 @@ export const api = {
         const response = await apiClient.patch('/volunteers/update-status', { donationId, taskId, status: 'PICKED_UP' });
         return normalize(response.data.data);
     },
-    completeDonation: async (donationId: string, proofFiles?: any[], taskId?: string) => {
-        // If it's an NGO uploading proof (Files), use the NGO endpoint
-        if (proofFiles && proofFiles.length > 0 && proofFiles[0] instanceof File) {
-            const formData = new FormData();
-            formData.append('donationId', donationId);
-            if (taskId) formData.append('taskId', taskId);
-            proofFiles.forEach(file => formData.append('images', file));
-            const response = await apiClient.post('/ngos/distribution-proof', formData, {
+    completeDonation: async (donationId: string, proofFiles?: any[], taskId?: string, existingProofImages?: string[]) => {
+        const storedUser = localStorage.getItem('user');
+        const user = storedUser ? JSON.parse(storedUser) : null;
+        const userRole = user?.role?.toLowerCase();
+
+        const formData = new FormData();
+        formData.append('donationId', donationId);
+        if (taskId) formData.append('taskId', taskId);
+
+        let hasData = false;
+
+        // Handle new files
+        if (proofFiles && proofFiles.length > 0) {
+            proofFiles.forEach(file => {
+                if (file instanceof File) {
+                    formData.append('images', file);
+                    hasData = true;
+                }
+            });
+        }
+
+        // Handle existing images to keep
+        if (existingProofImages) {
+            if (existingProofImages.length === 0) {
+                formData.append('existingProofImages', ''); // Signal empty list
+            } else {
+                existingProofImages.forEach(img => formData.append('existingProofImages', img));
+            }
+            hasData = true;
+        }
+
+        if (hasData) {
+            const endpoint = userRole === 'volunteer' ? '/volunteers/distribution-proof' : '/ngos/distribution-proof';
+            const response = await apiClient.post(endpoint, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             return normalize(response.data.data);
         }
 
-        const response = await apiClient.patch('/volunteers/update-status', { donationId, taskId, status: 'DISTRIBUTED', proofImages: proofFiles });
+        const response = await apiClient.patch('/volunteers/update-status', { donationId, taskId, status: 'DISTRIBUTED' });
+        return normalize(response.data.data);
+    },
+
+    uploadVolunteerDistributionProof: async (donationId: string, files: File[]) => {
+        const formData = new FormData();
+        formData.append('donationId', donationId);
+        files.forEach(file => formData.append('images', file));
+
+        const response = await apiClient.post('/volunteers/distribution-proof', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
         return normalize(response.data.data);
     },
 
@@ -230,49 +309,119 @@ export const api = {
         return normalize(users);
     },
     updateUser: async (id: string, updates: any) => {
+        // The backend specifically uses toggle-block for status changes
+        if (updates && 'status' in updates) {
+            const response = await apiClient.patch(`/admin/users/${id}/toggle-block`);
+            return normalize(response.data.data);
+        }
         const response = await apiClient.patch(`/admin/users/${id}`, updates);
         return normalize(response.data.data);
+    },
+    toggleVerifyUser: async (id: string) => {
+        const response = await apiClient.patch(`/admin/users/${id}/toggle-verify`);
+        return normalize(response.data.data);
+    },
+    getUserProfile: async (id: string) => {
+        const response = await apiClient.get(`/users/${id}`);
+        return normalize(response.data.data);
+    },
+    updateUserProfile: async (updates: any) => {
+        const response = await apiClient.patch('/users/profile', updates);
+        return normalize(response.data.data);
+    },
+    updatePassword: async (passwords: { currentPassword: string; newPassword: string }) => {
+        const response = await apiClient.patch('/users/update-password', passwords);
+        return response.data;
     },
 
     // Stats
     getStats: async (userId?: string, role?: string): Promise<DashboardStats> => {
-        if (!userId || !role) return {};
-
         try {
             if (role === 'admin') {
                 const response = await apiClient.get('/admin/stats');
                 return response.data.data;
             }
 
-            if (role === 'ngo') {
+            if (!userId || !role) return {};
+
+            const lowercaseRole = role.toLowerCase();
+
+            if (lowercaseRole === 'ngo') {
                 const claimedDonations = await api.getDonations({ claimedBy: userId });
                 const availableDonations = await api.getDonations();
                 return {
                     pendingDonations: availableDonations.length,
-                    activeDonations: claimedDonations.filter((d: any) => ['claimed', 'assigned', 'picked_up'].includes(d.status)).length,
+                    activeDonations: claimedDonations.filter((d: any) => ['CLAIMED_BY_NGO', 'VOLUNTEER_ASSIGNED', 'PICKED_UP'].includes(d.status)).length,
+                    completedDonations: claimedDonations.filter((d: any) => d.status === 'DISTRIBUTED').length,
                     totalDonations: claimedDonations.length,
                 };
             }
 
-            if (role === 'volunteer') {
-                // Similar to NGO, fetch available tasks
-                const available = await api.getDonations();
+            if (lowercaseRole === 'volunteer') {
+                const myTasks = await api.getRescueHistory(); // Historic tasks
+                const activeTasks = await api.getAssignedTasks(); // Currently active
+                const available = await api.getAvailableTasks();
+
                 return {
-                    pendingDonations: available.filter((d: any) => d.status === 'pending').length,
+                    pendingDonations: available.length,
+                    activeDonations: activeTasks.length,
+                    completedDonations: myTasks.filter((t: any) => t.status === 'DISTRIBUTED').length,
+                    totalDonations: myTasks.length + activeTasks.length
                 };
             }
 
-            // Default fallback for Donor
+            // Default fallback for Donor (lowercase role 'donor')
             const myDonations = await api.getDonations({ donorId: userId });
+            const feedbackResponse = await api.getMyFeedback();
             return {
                 totalDonations: myDonations.length,
-                activeDonations: myDonations.filter((d: any) => d.status !== 'distributed' && d.status !== 'cancelled').length,
-                completedDonations: myDonations.filter((d: any) => d.status === 'distributed').length,
+                activeDonations: myDonations.filter((d: any) => !['DISTRIBUTED', 'CANCELLED'].includes(d.status)).length,
+                completedDonations: myDonations.filter((d: any) => d.status === 'DISTRIBUTED').length,
+                averageRating: feedbackResponse.stats.averageRating,
+                totalFeedback: feedbackResponse.stats.totalFeedback
             };
         } catch (error) {
             console.error('Stats fetch failed', error);
             return {};
         }
+    },
+
+    // Feedback
+    submitFeedback: async (feedbackData: { donationId: string; rating: number; comment: string }) => {
+        const response = await apiClient.post('/feedback', feedbackData);
+        return normalize(response.data.data);
+    },
+    getDonorFeedback: async (donorId: string) => {
+        const response = await apiClient.get(`/feedback/donor/${donorId}`);
+        return {
+            feedback: normalize(response.data.data.feedback),
+            stats: response.data.data.stats
+        };
+    },
+    getMyFeedback: async () => {
+        const response = await apiClient.get('/feedback/my-feedback');
+        return {
+            feedback: normalize(response.data.data.feedback),
+            stats: response.data.data.stats
+        };
+    },
+
+    // Notifications
+    getNotifications: async () => {
+        const response = await apiClient.get('/notifications');
+        return normalize(response.data.data);
+    },
+    markNotificationAsRead: async (id: string) => {
+        const response = await apiClient.patch(`/notifications/${id}/read`);
+        return response.data;
+    },
+    markAllNotificationsAsRead: async () => {
+        const response = await apiClient.patch('/notifications/read-all');
+        return response.data;
+    },
+    clearNotifications: async () => {
+        const response = await apiClient.delete('/notifications/clear');
+        return response.data;
     },
 };
 

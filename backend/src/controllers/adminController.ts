@@ -3,21 +3,25 @@ import User from '../models/User';
 import Donation from '../models/Donation';
 import { ApiResponse } from '../utils/ApiResponse';
 import { AppError } from '../utils/AppError';
+import { createNotification } from '../utils/notifHelper';
+import { NotificationType } from '../models/Notification';
 
 export const getPlatformStats = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const totalDonations = await Donation.countDocuments();
         const totalUsers = await User.countDocuments();
-        const totalNGOs = await User.countDocuments({ role: 'NGO' });
-        const totalDonors = await User.countDocuments({ role: 'DONOR' });
-        const totalVolunteers = await User.countDocuments({ role: 'VOLUNTEER' });
+        const activeDonations = await Donation.countDocuments({ 
+            status: { $nin: ['DISTRIBUTED', 'CANCELLED'] } 
+        });
+        const completedDonations = await Donation.countDocuments({ 
+            status: 'DISTRIBUTED' 
+        });
 
         res.status(200).json(new ApiResponse('Platform stats fetched', {
             totalDonations,
             totalUsers,
-            totalNGOs,
-            totalDonors,
-            totalVolunteers,
+            activeDonations,
+            completedDonations
         }));
     } catch (error) {
         next(error);
@@ -70,6 +74,33 @@ export const getAllDonations = async (req: Request, res: Response, next: NextFun
             donations,
             pagination: { total, page, pages: Math.ceil(total / limit) }
         }));
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const toggleUserVerification = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { userId } = req.params;
+        const user = await User.findById(userId);
+        if (!user) return next(new AppError('User not found', 404));
+
+        user.isVerified = !user.isVerified;
+        await user.save();
+
+        if (user.isVerified) {
+            // NOTIFICATION: Notify User
+            await createNotification(
+                user._id,
+                NotificationType.USER_VERIFIED,
+                'Account Verified',
+                'Your account has been verified by the administrator. You can now fully participate in food rescue missions!',
+                user.role === 'NGO' ? '/ ngo/dashboard' : '/volunteer/dashboard',
+                (req as any).user._id
+            );
+        }
+
+        res.status(200).json(new ApiResponse(`User ${user.isVerified ? 'verified' : 'unverified'} successfully`, { user }));
     } catch (error) {
         next(error);
     }

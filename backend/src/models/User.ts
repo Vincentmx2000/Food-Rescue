@@ -16,8 +16,19 @@ export interface IUser extends Document {
     facebookId?: string;
     role: UserRole;
     phone?: string;
+    altPhone?: string;
     address?: string;
+    city?: string;
+    state?: string;
+    landmark?: string;
     organization?: string;
+    preferredTime?: string;
+    ngoType?: string;
+    establishedYear?: string;
+    serviceArea?: string;
+    activeWorkers?: string;
+    availableDays?: string[];
+    transportMode?: string;
     isVerified: boolean;
     isBlocked: boolean;
     refreshToken?: string;
@@ -33,8 +44,19 @@ const userSchema = new Schema<IUser>(
         facebookId: { type: String, unique: true, sparse: true },
         role: { type: String, enum: Object.values(UserRole), default: UserRole.DONOR },
         phone: { type: String },
+        altPhone: { type: String },
         address: { type: String },
+        city: { type: String },
+        state: { type: String },
+        landmark: { type: String },
         organization: { type: String },
+        preferredTime: { type: String },
+        ngoType: { type: String },
+        establishedYear: { type: String },
+        serviceArea: { type: String },
+        activeWorkers: { type: String },
+        availableDays: [{ type: String }],
+        transportMode: { type: String },
         isVerified: { type: Boolean, default: false },
         isBlocked: { type: Boolean, default: false },
         refreshToken: { type: String, select: false },

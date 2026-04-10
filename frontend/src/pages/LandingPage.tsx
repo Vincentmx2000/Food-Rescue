@@ -44,7 +44,7 @@ const LandingPage: React.FC = () => {
                                     <span className="text-sm font-bold text-slate-600">Verified Partnerships</span>
                                 </div>
                                 <div className="flex items-center gap-2 group">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                                    <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center text-primary-600 group-hover:scale-110 transition-transform">
                                         <FaTruck />
                                     </div>
                                     <span className="text-sm font-bold text-slate-600">Live Logistics</span>
@@ -111,9 +111,9 @@ const LandingPage: React.FC = () => {
                         </div>
 
                         <div className="group">
-                            <div className="bg-slate-50 p-10 rounded-[2rem] border-2 border-slate-100 group-hover:border-blue-200 group-hover:bg-blue-50/30 transition-all duration-500 h-full relative overflow-hidden text-center">
-                                <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-100/50 rounded-full blur-2xl group-hover:bg-blue-200/50 transition-all"></div>
-                                <div className="w-20 h-20 mx-auto bg-blue-600 text-white rounded-2xl flex items-center justify-center mb-8 shadow-lg shadow-blue-500/30 group-hover:-rotate-6 transition-transform">
+                            <div className="bg-slate-50 p-10 rounded-[2rem] border-2 border-slate-100 group-hover:border-primary-200 group-hover:bg-primary-50/30 transition-all duration-500 h-full relative overflow-hidden text-center">
+                                <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-100/50 rounded-full blur-2xl group-hover:bg-primary-200/50 transition-all"></div>
+                                <div className="w-20 h-20 mx-auto bg-primary-600 text-white rounded-2xl flex items-center justify-center mb-8 shadow-lg shadow-primary-500/30 group-hover:-rotate-6 transition-transform">
                                     <FaTruck size={36} />
                                 </div>
                                 <h3 className="text-2xl font-black text-slate-900 mb-4">Volunteers Bridge Gap</h3>

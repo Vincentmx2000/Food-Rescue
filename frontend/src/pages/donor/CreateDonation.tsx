@@ -31,9 +31,11 @@ const CreateDonation: React.FC = () => {
     const [images, setImages] = useState<string[]>([]);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
+        foodCategory: 'Veg',
         foodType: '',
         quantity: '',
         unit: 'servings',
@@ -138,6 +140,7 @@ const CreateDonation: React.FC = () => {
 
         try {
             await api.createDonation({
+                foodCategory: formData.foodCategory,
                 foodType: formData.foodType,
                 quantity: Number(formData.quantity),
                 unit: formData.unit,
@@ -177,6 +180,26 @@ const CreateDonation: React.FC = () => {
                             <h2 className="text-xl font-bold text-slate-800 border-b pb-2 flex items-center">
                                 <FiType className="mr-2 text-primary-500" /> Food Details
                             </h2>
+
+                            <div className="mb-6">
+                                <label className="text-sm font-semibold text-slate-700 mb-3 block">Dietary Category</label>
+                                <div className="flex gap-4">
+                                    <label className={`flex-1 flex items-center justify-center space-x-2 cursor-pointer px-4 py-4 rounded-xl border-2 transition-all ${formData.foodCategory === 'Veg' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                                        <input type="radio" name="foodCategory" value="Veg" checked={formData.foodCategory === 'Veg'} onChange={handleChange} className="hidden" />
+                                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${formData.foodCategory === 'Veg' ? 'border-emerald-500' : 'border-slate-300'}`}>
+                                            {formData.foodCategory === 'Veg' && <div className="w-2 h-2 rounded-full bg-emerald-500"></div>}
+                                        </div>
+                                        <span className="font-bold">Vegetarian</span>
+                                    </label>
+                                    <label className={`flex-1 flex items-center justify-center space-x-2 cursor-pointer px-4 py-4 rounded-xl border-2 transition-all ${formData.foodCategory === 'Non-Veg' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-sm' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                                        <input type="radio" name="foodCategory" value="Non-Veg" checked={formData.foodCategory === 'Non-Veg'} onChange={handleChange} className="hidden" />
+                                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${formData.foodCategory === 'Non-Veg' ? 'border-rose-500' : 'border-slate-300'}`}>
+                                            {formData.foodCategory === 'Non-Veg' && <div className="w-2 h-2 rounded-full bg-rose-500"></div>}
+                                        </div>
+                                        <span className="font-bold">Non-Vegetarian</span>
+                                    </label>
+                                </div>
+                            </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
@@ -259,7 +282,12 @@ const CreateDonation: React.FC = () => {
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                 {images.map((url, index) => (
                                     <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
-                                        <img src={url} alt={`Food ${index + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                        <img
+                                            src={url}
+                                            alt={`Food ${index + 1}`}
+                                            className="w-full h-full object-cover transition-transform group-hover:scale-110 cursor-zoom-in"
+                                            onClick={() => setSelectedImage(url)}
+                                        />
                                         <button
                                             type="button"
                                             onClick={() => removeImage(index)}
@@ -370,6 +398,28 @@ const CreateDonation: React.FC = () => {
                     </form>
                 </div>
             </div>
+
+            {/* Full Image Viewer Modal */}
+            {selectedImage && (
+                <div
+                    className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-10 animate-fade-in"
+                    onClick={() => setSelectedImage(null)}
+                >
+                    <button
+                        className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors bg-white/10 p-4 rounded-full backdrop-blur-md"
+                        onClick={() => setSelectedImage(null)}
+                    >
+                        <FiX size={32} />
+                    </button>
+
+                    <img
+                        src={selectedImage}
+                        alt="Full View"
+                        className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl animate-zoom-in"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 };

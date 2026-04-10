@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 interface ProtectedRouteProps {
@@ -9,6 +9,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
     const { user, loading } = useAuth();
+    const location = useLocation();
 
     if (loading) {
         return (
@@ -19,10 +20,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     }
 
     if (!user) {
+        // Redirect to admin login if trying to access admin routes
+        if (location.pathname.startsWith('/admin')) {
+            return <Navigate to="/admin/login" replace />;
+        }
         return <Navigate to="/login" replace />;
     }
 
     if (allowedRoles && !allowedRoles.includes(user.role.toLowerCase() as any)) {
+        // If an admin tries to access public user routes or vice-versa
+        if (user.role.toLowerCase() === 'admin') {
+            return <Navigate to="/admin/dashboard" replace />;
+        }
         return <Navigate to="/" replace />;
     }
 

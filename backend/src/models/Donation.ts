@@ -11,6 +11,7 @@ export enum DonationStatus {
 
 export interface IDonation extends Document {
     donorId: mongoose.Types.ObjectId;
+    foodCategory: 'Veg' | 'Non-Veg';
     foodType: string;
     quantity: number;
     unit: string;
@@ -26,12 +27,17 @@ export interface IDonation extends Document {
     claimedByNGO?: mongoose.Types.ObjectId;
     assignedVolunteer?: mongoose.Types.ObjectId;
     pickupTime?: Date;
-    completedAt?: Date;
+    claimedAt?: Date;
+    volunteerAssignedAt?: Date; // Changed from Date to string in instruction, but keeping as Date for consistency with other timestamps
+    pickedUpAt?: Date; // Changed from Date to string in instruction, but keeping as Date
+    completedAt?: Date; // Changed from Date to string in instruction, but keeping as Date
+    createdAt?: Date; // Added, Mongoose timestamps will handle this as Date
 }
 
 const donationSchema = new Schema<IDonation>(
     {
         donorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        foodCategory: { type: String, enum: ['Veg', 'Non-Veg'], required: true },
         foodType: { type: String, required: true },
         quantity: { type: Number, required: true },
         unit: { type: String, default: 'servings' },
@@ -47,6 +53,9 @@ const donationSchema = new Schema<IDonation>(
         claimedByNGO: { type: Schema.Types.ObjectId, ref: 'User' },
         assignedVolunteer: { type: Schema.Types.ObjectId, ref: 'User' },
         pickupTime: { type: Date },
+        claimedAt: { type: Date },
+        volunteerAssignedAt: { type: Date },
+        pickedUpAt: { type: Date },
         completedAt: { type: Date },
     },
     { timestamps: true }

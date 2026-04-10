@@ -6,6 +6,8 @@ import VolunteerTask, { TaskStatus } from '../models/VolunteerTask';
 import { AppError } from '../utils/AppError';
 import { ApiResponse } from '../utils/ApiResponse';
 import User, { UserRole } from '../models/User';
+import { createNotification } from '../utils/notifHelper';
+import { NotificationType } from '../models/Notification';
 
 export const claimDonation = async (req: any, res: Response, next: NextFunction) => {
     try {
@@ -13,6 +15,11 @@ export const claimDonation = async (req: any, res: Response, next: NextFunction)
 
         if (!mongoose.Types.ObjectId.isValid(donationId)) {
             return next(new AppError('Invalid donation ID', 400));
+        }
+
+        // Check if NGO is verified
+        if (!req.user.isVerified) {
+            return next(new AppError('Your organization account is not yet verified by Admin. You cannot claim food until verified.', 403));
         }
 
         console.log(`NGO ${req.user._id} attempting to claim donation ${donationId}`);
@@ -23,7 +30,8 @@ export const claimDonation = async (req: any, res: Response, next: NextFunction)
             { _id: donationIdObj, status: DonationStatus.AVAILABLE },
             {
                 status: DonationStatus.CLAIMED_BY_NGO,
-                claimedByNGO: ngoIdObj
+                claimedByNGO: ngoIdObj,
+                claimedAt: new Date()
             },
             { new: true, runValidators: true }
         );
@@ -42,6 +50,16 @@ export const claimDonation = async (req: any, res: Response, next: NextFunction)
                 status: ClaimStatus.IN_PROGRESS
             },
             { upsert: true, new: true, runValidators: true }
+        );
+
+        // NOTIFICATION: Notify Donor
+        await createNotification(
+            donation.donorId,
+            NotificationType.DONATION_CLAIMED,
+            'Donation Claimed',
+            `Your donation of ${donation.foodType} has been claimed by ${req.user.organization || req.user.name}.`,
+            `/donation/${donation._id}`,
+            req.user._id
         );
 
         console.log(`Claim record created/updated: ${claim._id}`);
@@ -87,7 +105,18 @@ export const assignVolunteer = async (req: any, res: Response, next: NextFunctio
         if (!isBroadcast) {
             donation.status = DonationStatus.VOLUNTEER_ASSIGNED;
             donation.assignedVolunteer = (volunteer as any)._id;
+            donation.volunteerAssignedAt = new Date();
             await donation.save();
+
+            // NOTIFICATION: Notify Volunteer
+            await createNotification(
+                (volunteer as any)._id,
+                NotificationType.VOLUNTEER_ASSIGNED,
+                'New Mission Assigned',
+                `${req.user.organization || req.user.name} has assigned you to pick up food from ${donation.donorName}.`,
+                `/task/${donation._id}`,
+                req.user._id
+            );
         }
 
         // Update Claim
@@ -133,7 +162,12 @@ export const uploadDistributionProof = async (req: any, res: Response, next: Nex
         console.log('req.files:', req.files);
         console.log('imageUrls:', imageUrls);
 
-        if (imageUrls.length === 0) return next(new AppError('Please upload at least one proof image', 400));
+        const hasExisting = req.body && Object.prototype.hasOwnProperty.call(req.body, 'existingProofImages');
+        const hasNew = req.files && (req.files as any[]).length > 0;
+
+        if (!hasExisting && !hasNew) {
+            return next(new AppError('Please upload at least one proof image', 400));
+        }
 
         let claim = await Claim.findOne({ donationId, ngoId: req.user._id });
 
@@ -149,21 +183,54 @@ export const uploadDistributionProof = async (req: any, res: Response, next: Nex
                 donationId,
                 ngoId: req.user._id,
                 pickupMode: donation.assignedVolunteer ? PickupMode.VOLUNTEER : PickupMode.SELF,
-                status: ClaimStatus.IN_PROGRESS
+                status: ClaimStatus.IN_PROGRESS,
+                distributionProofImages: []
             });
             console.log('Created new claim:', claim._id);
         }
 
-        claim.distributionProofImages = imageUrls;
+        let currentProofImages = claim.distributionProofImages || [];
+
+        // Handle existing images to keep
+        if (hasExisting) {
+            const keepImages = Array.isArray(req.body.existingProofImages)
+                ? req.body.existingProofImages
+                : (req.body.existingProofImages ? [req.body.existingProofImages] : []);
+
+            currentProofImages = currentProofImages.filter(img => {
+                const normalizedPath = img.replace(/\\/g, '/');
+                return keepImages.some((keep: string) => keep.includes(normalizedPath));
+            });
+        }
+
+        // Add new images
+        if (hasNew) {
+            const newImages = (req.files as any[]).map(f => f.path);
+            currentProofImages = [...currentProofImages, ...newImages];
+        }
+
+        claim.distributionProofImages = currentProofImages;
         claim.status = ClaimStatus.COMPLETED;
         await claim.save();
 
         console.log('Claim saved with images:', claim.distributionProofImages);
 
-        await Donation.findByIdAndUpdate(donationId, {
+        const donationFull = await Donation.findByIdAndUpdate(donationId, {
             status: DonationStatus.DISTRIBUTED,
             completedAt: new Date()
         });
+
+        // NOTIFICATION: Notify Donor
+        if (donationFull) {
+            await createNotification(
+                donationFull.donorId,
+                NotificationType.DISTRIBUTED,
+                'Donation Distributed',
+                `Your donation of ${donationFull.foodType} has been successfully distributed to people in need!`,
+                `/donation/${donationFull._id}`,
+                req.user._id
+            );
+        }
 
         await VolunteerTask.findOneAndUpdate(
             { donationId },
@@ -186,9 +253,21 @@ export const getMyClaims = async (req: any, res: Response, next: NextFunction) =
         const donations = await Donation.find({ claimedByNGO: req.user._id })
             .populate('donorId', 'name email phone')
             .populate('assignedVolunteer', 'name email phone')
-            .sort({ updatedAt: -1 });
+            .sort({ updatedAt: -1 })
+            .lean();
 
-        res.status(200).json(new ApiResponse('Claimed donations fetched successfully', donations));
+        // Attach distribution proof images for each donation
+        const donationsWithProof = await Promise.all(
+            donations.map(async (donation: any) => {
+                const claim = await Claim.findOne({ donationId: donation._id }).lean();
+                return {
+                    ...donation,
+                    distributionProofImages: claim?.distributionProofImages || []
+                };
+            })
+        );
+
+        res.status(200).json(new ApiResponse('Claimed donations fetched successfully', donationsWithProof));
     } catch (error) {
         next(error);
     }

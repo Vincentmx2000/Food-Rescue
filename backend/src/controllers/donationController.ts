@@ -8,7 +8,7 @@ import { ApiResponse } from '../utils/ApiResponse';
 
 export const createDonation = async (req: any, res: Response, next: NextFunction) => {
     try {
-        const { foodType, quantity, unit, expiryTime, description, address, longitude, latitude } = req.body;
+        const { foodCategory, foodType, quantity, unit, expiryTime, description, address, longitude, latitude } = req.body;
 
         const imageUrls = req.files ? (req.files as any[]).map(f => f.path) : [];
 
@@ -21,6 +21,7 @@ export const createDonation = async (req: any, res: Response, next: NextFunction
 
         const donation = await Donation.create({
             donorId: req.user._id,
+            foodCategory,
             foodType,
             quantity: Number(quantity),
             unit,
@@ -48,7 +49,8 @@ export const getMyDonations = async (req: any, res: Response, next: NextFunction
 
         const donations = await Donation.find({ donorId: req.user._id })
             .populate('donorId', 'name email')
-            .populate('claimedByNGO', 'name organization')
+            .populate('claimedByNGO', 'name organization phone email address')
+            .populate('assignedVolunteer', 'name phone email')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -142,11 +144,20 @@ export const getAvailableDonations = async (req: Request, res: Response, next: N
 
 export const getDonationDetails = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const donation = await Donation.findById(req.params.id).populate('donorId', 'name email phone');
+        const donation = await Donation.findById(req.params.id)
+            .populate('donorId', 'name email phone')
+            .populate('claimedByNGO', 'name organization phone email address')
+            .populate('assignedVolunteer', 'name phone email');
         if (!donation) {
             return next(new AppError('Donation not found', 404));
         }
-        res.status(200).json(new ApiResponse('Donation details fetched', donation));
+
+        // Attach distribution proof images from Claim
+        const claim = await Claim.findOne({ donationId: donation._id }).lean();
+        const donationObj = donation.toObject();
+        (donationObj as any).distributionProofImages = claim?.distributionProofImages || [];
+
+        res.status(200).json(new ApiResponse('Donation details fetched', donationObj));
     } catch (error) {
         next(error);
     }
@@ -202,29 +213,80 @@ export const updateDonation = async (req: any, res: Response, next: NextFunction
 
         // Authorization
         const isDonor = donation.donorId && req.user._id && donation.donorId.toString() === req.user._id.toString();
-        const isNGO = donation.claimedByNGO && req.user._id && donation.claimedByNGO.toString() === req.user._id.toString();
         const isAdmin = req.user.role && req.user.role.toUpperCase() === 'ADMIN';
 
-        if (!isDonor && !isNGO && !isAdmin) {
-            return next(new AppError('You are not authorized to update this donation', 403));
+        if (!isDonor && !isAdmin) {
+            // NGOs can only update status (which is what they were doing before)
+            const isNGO = donation.claimedByNGO && req.user._id && donation.claimedByNGO.toString() === req.user._id.toString();
+            if (!isNGO) {
+                return next(new AppError('You are not authorized to update this donation', 403));
+            }
         }
 
-        // Transform status to uppercase if present to match enum
-        if (req.body.status) {
-            req.body.status = req.body.status.toUpperCase();
+        const updateData: any = { ...req.body };
+
+        // Handle Status Transform
+        if (updateData.status) {
+            updateData.status = updateData.status.toUpperCase();
+            if (updateData.status === 'PICKED_UP') updateData.pickedUpAt = new Date();
+            if (updateData.status === 'DISTRIBUTED') updateData.completedAt = new Date();
         }
 
-        const donationIdObj = new mongoose.Types.ObjectId(req.params.id);
-        const ngoIdObj = donation.claimedByNGO ? new mongoose.Types.ObjectId(donation.claimedByNGO.toString()) : null;
+        // Handle Images
+        let currentImages = donation.images || [];
+
+        // If the client sent a list of existing images to keep OR new files are provided
+        const hasExistingImages = req.body && Object.prototype.hasOwnProperty.call(req.body, 'existingImages');
+        const hasNewFiles = req.files && (req.files as any[]).length > 0;
+
+        if (hasExistingImages) {
+            const keepImages = Array.isArray(req.body.existingImages)
+                ? req.body.existingImages
+                : (req.body.existingImages ? [req.body.existingImages] : []);
+
+            // Filter current images to only keep those present in keepImages
+            currentImages = currentImages.filter(img => {
+                const normalizedPath = img.replace(/\\/g, '/');
+                return keepImages.some((keep: string) => keep.includes(normalizedPath));
+            });
+        }
+
+        // Add new images
+        if (hasNewFiles) {
+            const newImages = (req.files as any[]).map(f => f.path);
+            currentImages = [...currentImages, ...newImages];
+        }
+
+        // Only update images field if something was changed or explicitly sent
+        if (hasExistingImages || hasNewFiles) {
+            updateData.images = currentImages;
+        }
+
+        // Handle Location coordinates
+        if (updateData.longitude && updateData.latitude) {
+            updateData.location = {
+                type: 'Point',
+                coordinates: [parseFloat(updateData.longitude), parseFloat(updateData.latitude)]
+            };
+            delete updateData.longitude;
+            delete updateData.latitude;
+        }
+
+        // Handle numeric fields
+        if (updateData.quantity) updateData.quantity = Number(updateData.quantity);
 
         const updatedDonation = await Donation.findByIdAndUpdate(
-            donationIdObj,
-            { $set: req.body },
+            req.params.id,
+            { $set: updateData },
             { new: true, runValidators: true }
         );
 
+        if (!updatedDonation) {
+            return next(new AppError('Failed to update donation', 500));
+        }
+
         // Sync with Claim if status is updated
-        if (req.body.status) {
+        if (updateData.status) {
             const statusMap: Record<string, string> = {
                 'AVAILABLE': ClaimStatus.PENDING,
                 'CLAIMED_BY_NGO': ClaimStatus.IN_PROGRESS,
@@ -234,22 +296,20 @@ export const updateDonation = async (req: any, res: Response, next: NextFunction
                 'CANCELLED': ClaimStatus.CANCELLED
             };
 
-            const newClaimStatus = statusMap[req.body.status];
+            const newClaimStatus = statusMap[updateData.status];
             if (newClaimStatus) {
                 const claimUpdate: any = { status: newClaimStatus };
-                if (req.body.status.toUpperCase() === 'PICKED_UP' && isNGO) {
+
+                // If NGO is updating to PICKED_UP, it's a self-pickup
+                const isNGO = req.user.role === 'NGO';
+                if (updateData.status === 'PICKED_UP' && isNGO) {
                     claimUpdate.pickupMode = 'SELF';
                 }
 
-                // Also ensure ngoId is present if we are the ones updating it
-                if (ngoIdObj) {
-                    claimUpdate.ngoId = ngoIdObj;
-                }
-
                 await Claim.findOneAndUpdate(
-                    { donationId: donationIdObj },
+                    { donationId: updatedDonation._id },
                     { $set: claimUpdate },
-                    { upsert: true, new: true }
+                    { upsert: true }
                 );
             }
 
@@ -259,7 +319,7 @@ export const updateDonation = async (req: any, res: Response, next: NextFunction
                 'DISTRIBUTED': TaskStatus.DISTRIBUTED,
                 'CANCELLED': TaskStatus.CANCELLED
             };
-            const newTaskStatus = taskStatusMap[req.body.status];
+            const newTaskStatus = taskStatusMap[updateData.status];
 
             if (newTaskStatus) {
                 const taskUpdate: any = { status: newTaskStatus };
@@ -270,9 +330,8 @@ export const updateDonation = async (req: any, res: Response, next: NextFunction
                 }
 
                 await VolunteerTask.findOneAndUpdate(
-                    { donationId: donationIdObj },
-                    { $set: taskUpdate },
-                    { new: true }
+                    { donationId: updatedDonation._id },
+                    { $set: taskUpdate }
                 );
             }
         }
