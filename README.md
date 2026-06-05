@@ -194,4 +194,3 @@ Food-Rescue/
 ## 📄 License
 
 Built as a final year MCA project for academic and demonstration purposes.  
-Inspired by **UN SDG 2: Zero Hunger**.
