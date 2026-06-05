@@ -10,6 +10,15 @@
 
 ---
 
+# Images 
+<img width="1900" height="910" alt="Landing Page" src="https://github.com/user-attachments/assets/84bd9c59-0d63-4d50-80c6-0653b8a816bd" />
+<img width="1897" height="906" alt="Donor Page " src="https://github.com/user-attachments/assets/75da2eb8-542b-4fe4-a852-f9d9f07ae222" />
+<img width="1898" height="907" alt="NGO Dashboard" src="https://github.com/user-attachments/assets/62ed66da-77d8-44d6-8d4b-c8c1cb77e281" />
+<img width="1918" height="907" alt="Volunteer Dashboard" src="https://github.com/user-attachments/assets/9baa5479-ea38-4d3b-966b-2116bdbbecba" />
+<img width="1897" height="903" alt="Amin dashboard" src="https://github.com/user-attachments/assets/5e300777-16ae-4391-a323-51fec87dfd7f" />
+
+
+
 ## 📌 Overview
 
 Food Rescue is a full-stack web platform that bridges the gap between food surplus and food scarcity. Donors can post available food, NGOs can claim and coordinate pickups, and volunteers can accept delivery tasks — all managed through a role-based dashboard with real-time updates and location tracking.
