@@ -8,7 +8,7 @@
 ## ABSTRACT
 The **Food Rescue System** is a comprehensive web-based platform designed to address the critical issue of food waste by connecting surplus food donors with Non-Governmental Organizations (NGOs) and volunteers. In a world where tons of edible food are wasted daily while millions go hungry, this system provides a real-time, transparent, and efficient logistics framework for food redistribution.
 
-Built using the **MERN** stack (MongoDB, Express.js, React, Node.js) with **TypeScript**, the platform features a role-based architecture catering to four distinct user groups: **Donors** (individuals, restaurants, hotels), **NGOs** (social welfare organizations), **Volunteers** (logistics support), and **Admins** (platform oversight). Key features include interactive map integration for location tracking, multiple-image upload for food quality verification, a dynamic "Mission Control" for NGO coordination, and a volunteer broadcasting system for efficient pickup management. The system ensures accountability through "Proof of Distribution" image uploads and a live progress tracking timeline, making food rescue a streamlined and impactful process.
+Built using the **MERN** stack (MongoDB, Express.js, React, Node.js) with **TypeScript**, the platform features a role-based architecture catering to four distinct user groups: **Donors** (individuals, restaurants, hotels), **NGOs** (social welfare organizations), **Volunteers** (logistics support), and **Admins** (platform oversight). Key features include interactive map integration for location tracking, multiple-image upload for food quality verification, a dynamic "Mission Control" for NGO coordination, and a volunteer broadcasting system for efficient pickup management. The system ensures accountability through "Proof of Distribution" image uploads, a real-time notification system for mission updates, and a feedback mechanism for quality assurance. The live progress tracking timeline and community-driven verification make food rescue a streamlined and impactful process.
 
 ---
 
@@ -74,6 +74,8 @@ Table 4.1: User Table Data Dictionary ..........................................
 Table 4.2: Donation Table Data Dictionary .............................................................................15
 Table 4.3: Claim Table Data Dictionary ..................................................................................16
 Table 4.4: VolunteerTask Table Data Dictionary .....................................................................17
+Table 4.5: Notification Table Data Dictionary ........................................................................18
+Table 4.6: Feedback Table Data Dictionary ............................................................................19
 
 ### LIST OF FIGURES
 Figure 4.1: Entity Relationship Diagram (ERD) .......................................................................13
@@ -114,6 +116,8 @@ The "Proposed System" is a digital ecosystem designed to optimize food rescue op
 - **Automated Logistics:** NGOs can broadcast "pickup tasks" to a network of volunteers, solving the last-mile delivery problem.
 - **Visual Verification:** Requirement for "Proof of Distribution" photos ensures the food reaches its destination.
 - **Interactive Maps:** Integration with OpenStreetMap (via Leaflet) provides exact pickup and drop-off coordination.
+- **Feedback Loop:** Post-delivery ratings and comments between Donors and NGOs to ensure system integrity.
+- **Real-time Notifications:** Automated alerts for status changes, mission assignments, and verification.
 
 ---
 
@@ -155,9 +159,12 @@ erDiagram
     USER ||--o{ DONATION : "as Donor"
     USER ||--o{ CLAIM : "as NGO"
     USER ||--o{ VOLUNTEER_TASK : "as Volunteer"
+    USER ||--o{ NOTIFICATION : "receives"
     DONATION ||--o| CLAIM : "linked"
     DONATION ||--o| VOLUNTEER_TASK : "linked"
+    DONATION ||--o| FEEDBACK : "rated"
     CLAIM ||--o| VOLUNTEER_TASK : "coordinates"
+    NGO ||--o{ FEEDBACK : "receives"
 ```
 
 #### 4.1.2 Data Dictionary
@@ -171,16 +178,19 @@ erDiagram
 | `role` | Enum | DONOR, NGO, VOLUNTEER, ADMIN |
 | `phone` | String | Contact number (Verified) |
 | `address` | String | Physical location |
-| `isVerified`| Boolean | Account verification status |
+| `bio/orgDetails`| String | Descriptive information for public profile |
+| `isVerified`| Boolean | Account verification status (Admin controlled) |
+| `preferences`| Object | Notification and accessibility settings |
 
 **Table 4.2: Donation Table (Collection: donations)**
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `_id` | ObjectId | Primary Key |
 | `donorId` | ObjectId | Ref to Users (Donor) |
-| `foodType` | String | Category of food |
+| `foodCategory`| Enum | Veg, Non-Veg |
+| `foodType` | String | Name of food item |
 | `quantity` | Number | Amount available |
-| `status` | Enum | AVAILABLE, CLAIMED_BY_NGO, DISTRIBUTED |
+| `status` | Enum | AVAILABLE, CLAIMED_BY_NGO, ASSIGNED, PICKED_UP, DISTRIBUTED |
 | `location` | Point | GeoJSON [Longitude, Latitude] |
 | `images` | [String] | Array of image URLs |
 
@@ -191,7 +201,26 @@ erDiagram
 | `donationId`| ObjectId | Ref to Donations |
 | `ngoId` | ObjectId | Ref to Users (NGO) |
 | `pickupMode`| Enum | SELF, VOLUNTEER |
-| `status` | Enum | PENDING, COMPLETED |
+| `status` | Enum | PENDING, IN_PROGRESS, COMPLETED |
+
+**Table 4.5: Notification Table (Collection: notifications)**
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `_id` | ObjectId | Primary Key |
+| `recipient` | ObjectId | Ref to Users |
+| `type` | Enum | Status changes, verify, alerts |
+| `title/msg` | String | Notification content |
+| `read` | Boolean | Read status tracking |
+
+**Table 4.6: Feedback Table (Collection: feedbacks)**
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `_id` | ObjectId | Primary Key |
+| `donationId`| ObjectId | Ref to Donations (Unique) |
+| `donorId` | ObjectId | Ref to Users (Donor) |
+| `ngoId` | ObjectId | Ref to Users (NGO) |
+| `rating` | Number | Integer (1-5) |
+| `comment` | String | Qualitative feedback |
 
 #### 4.1.3 Table Relationship
 - A **Donation** is created by one **Donor**.
@@ -208,6 +237,8 @@ The system sits at the center, interacting with four external entities: Donors (
 1.  **Donation Flow:** Donor → Post Food → Database → NGO View.
 2.  **Claim Flow:** NGO → Claim Donation → Update Status → Create Logistics Task.
 3.  **Logistics Flow:** Volunteer → Search Tasks → Accept → Pickup → Deliver → Proof Upload.
+4.  **Feedback Flow:** Donor → View Completed Donation → Submit Rating/Comment → Profile Stats Update.
+5.  **Notification Flow:** Event Trigger (Claim/Deliver) → Generate Notification → Recipient Alert.
 
 ---
 
@@ -218,7 +249,9 @@ The system sits at the center, interacting with four external entities: Donors (
 2.  **Donor Module:** Features a "Post Surplus" form with map-pin GPS coordinates and multi-image upload. Provides a history of donations and their live status.
 3.  **NGO Mission Control:** A real-time dashboard where NGOs browse available food, claim items, and manage logistics (assigning volunteers or self-pickup).
 4.  **Volunteer Logistics Module:** Allows volunteers to find available tasks nearby, accept deliveries, and update the physical status of the food.
-5.  **Admin Oversight:** A global dashboard for user management (blocking/verifying) and platform-wide statistics tracking.
+5.  **Admin Oversight:** A global dashboard for user management (blocking/verifying), platform statistics, and manual mission overrides.
+6.  **Notification System:** A real-time engine that triggers alerts for pickup requests, delivery confirmations, and verification status.
+7.  **Feedback & Profile Module:** Handles the collection of post-mission reviews and manages persistent public profiles for all stakeholders.
 
 ---
 
@@ -234,10 +267,14 @@ System testing was performed to verify that the integrated software meets the sp
 
 #### 6.2.2 Integration Testing
 - **Claim-Task Sync:** Verified that when an NGO claims a donation, a `VolunteerTask` is automatically created if the mode is set to 'VOLUNTEER'.
+- **Notification Triggering:** Verified that performing actions (Claiming, Assigning, Distributing) sends real-time alerts to the relevant stakeholders.
+- **Feedback Integrity:** Verified that feedback can only be submitted once per donation and only after the status is set to 'DISTRIBUTED'.
 
 ### 6.4 Validation Testing
 - **Role Guards:** Verified that a Volunteer cannot access the Admin dashboard.
 - **Image Upload:** Verified that only valid image formats are accepted for distribution proof.
+- **Notification Read Status:** Verified that clicking a notification marks it as 'Read' and redirects to the correct resource.
+- **Feedback Rating Range:** Verified that the system rejects ratings outside the 1-5 range at both the API and Schema levels.
 
 ---
 
@@ -272,11 +309,13 @@ The project follows a modular deployment strategy:
 
 ### 9.1 Sample Screens
 - **Landing Page:** Features a premium hero section with "Rescuing Food, Saving Lives" CTA.
-- **Donor Dashboard:** Shows a 3-step timeline (Posted → Claimed → Distributed).
+- **Donor Dashboard:** Shows a 3-step timeline (Posted → Claimed → Distributed) and incoming feedback.
 - **NGO Mission Details:** Displays donor's contact card, pickup map, and distribution proof upload area.
+- **Public Profiles:** Showcases impact metrics, verification status, and past reviews for NGOs and Donors.
+- **Notification Center:** A toggleable panel showing all recent mission alerts and system messages.
 
 ### 9.2 User Manual
-1.  **For Donors:** Sign up → "Post Food" → Enter details & upload photos → Wait for claim.
+1.  **For Donors:** Sign up → "Post Food" → Enter details & upload photos → Wait for claim → Once distributed, "Leave Feedback" for the NGO.
 2.  **For NGOs:** Sign up → "Browse Food" → "Claim" → Choose Pickup Mode → Assign Volunteer.
 3.  **For Volunteers:** Sign up → "Find Deliveries" → "Accept" → Drive to site → "Mark Picked Up" → "Mark Delivered" + Photo.
 
