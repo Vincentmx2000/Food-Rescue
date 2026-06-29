@@ -16,23 +16,22 @@
 
 <img width="940" height="448" alt="image" src="https://github.com/user-attachments/assets/083a9afa-87af-4edc-a386-cbbf1175258d" />
 <img width="940" height="448" alt="image" src="https://github.com/user-attachments/assets/b29294c5-eca4-4ddd-adb5-e4d88e6b48d5" />
-Sign In Page
+**SIGN IN PAGE**
 <img width="940" height="444" alt="image" src="https://github.com/user-attachments/assets/02a0629c-ad0c-40b7-b5ce-c9744cfa6395" />
 <img width="940" height="450" alt="image" src="https://github.com/user-attachments/assets/74d3707c-71dd-461d-be54-5c8617732903" />
-Donor 
+**Donor **
 <img width="940" height="447" alt="image" src="https://github.com/user-attachments/assets/04c0f212-e3df-4215-b1c1-2c28e968a23f" />
 <img width="940" height="447" alt="image" src="https://github.com/user-attachments/assets/36020edb-2564-462c-9560-364b551a40df" />
 <img width="940" height="447" alt="image" src="https://github.com/user-attachments/assets/516ebc45-57bb-42ef-bd78-407bfbac63f4" />
-NGO 
+**NGO **
 <img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/7183af8f-ade3-4bec-9ce8-6d13b04a5075" />
 <img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/bcaa7612-3532-41af-bcf6-78959c8f5bb5" />
 <img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/32dc31e5-16f4-4f96-abdc-3623befbdf43" />
-Volunteer
+**Volunteer**
 <img width="940" height="446" alt="image" src="https://github.com/user-attachments/assets/cd343d99-9d14-4eaa-a215-767726f618ab" />
 <img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/95987b01-b597-45fa-83cc-2bbcd847c4e7" />
 <img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/a13ba2af-0872-4f99-a97f-e1947b6a6420" />
-
-Admin
+**Admin**
 <img width="940" height="448" alt="image" src="https://github.com/user-attachments/assets/3a2ce61e-84bf-4916-a30d-68517fda72a2" />
 <img width="940" height="445" alt="image" src="https://github.com/user-attachments/assets/6ca6c829-962c-4ab9-aba3-15107577b379" />
 <img width="940" height="445" alt="image" src="https://github.com/user-attachments/assets/232b238d-b5e0-4e95-b89e-87d7727c9365" />
