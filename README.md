@@ -25,14 +25,15 @@
 **Donor**
 
 <img width="940" height="447" alt="image" src="https://github.com/user-attachments/assets/04c0f212-e3df-4215-b1c1-2c28e968a23f" />
-<img width="940" height="447" alt="image" src="https://github.com/user-attachments/assets/36020edb-2564-462c-9560-364b551a40df" />
-<img width="940" height="447" alt="image" src="https://github.com/user-attachments/assets/516ebc45-57bb-42ef-bd78-407bfbac63f4" />
+<img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/3873f2d8-bc9d-4f83-b483-7bf949b09d78" />
+<img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/91aaab9b-0674-45ab-8482-92c528091799" />
+
 
 **NGO**
 
 <img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/7183af8f-ade3-4bec-9ce8-6d13b04a5075" />
-<img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/bcaa7612-3532-41af-bcf6-78959c8f5bb5" />
-<img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/32dc31e5-16f4-4f96-abdc-3623befbdf43" />
+<img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/332ccaba-0066-4816-8fec-29cf825e7797" />
+<img width="940" height="448" alt="image" src="https://github.com/user-attachments/assets/4fb66ee4-70f5-4b60-b8c7-f839320dc77e" />
 
 **Volunteer**
 
