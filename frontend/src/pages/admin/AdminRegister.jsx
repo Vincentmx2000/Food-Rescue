@@ -35,7 +35,7 @@ const AdminRegister = () => {
                 email: formData.email,
                 password: formData.password,
                 phone: formData.phone,
-                role: 'admin',
+                role: 'ADMIN',
             });
             navigate('/admin/login');
         } catch (err) {
