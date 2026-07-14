@@ -15,7 +15,6 @@
 ## 🔗 Live Demo
 
 - **App**: [food-rescue-nine.vercel.app](https://food-rescue-nine.vercel.app)
-- **API**: [food-rescue-dmyt.onrender.com](https://food-rescue-dmyt.onrender.com)
 
 > ⚠️ **Note**: The backend runs on Render's free tier, which spins down after periods of inactivity. The first request after idle time may take 30–50 seconds to respond while the server wakes up — subsequent requests will be fast.
 
