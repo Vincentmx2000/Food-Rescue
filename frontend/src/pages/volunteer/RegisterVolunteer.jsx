@@ -41,7 +41,7 @@ const RegisterVolunteer = () => {
                 password: formData.password,
                 phone: formData.phone,
                 address: formData.city, // Mapping city to address for now
-                role: 'volunteer',
+                role: 'VOLUNTEER',
             });
             navigate('/volunteer/dashboard');
         } catch (err) {

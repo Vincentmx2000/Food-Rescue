@@ -50,7 +50,7 @@ const Register = () => {
                 email: formData.email,
                 password: formData.password,
                 phone: formData.phone,
-                role: role,
+                role: role.toUpperCase(),
                 organization: role === 'ngo' ? formData.organization : undefined,
                 address: role === 'ngo' ? formData.address : undefined,
             });
