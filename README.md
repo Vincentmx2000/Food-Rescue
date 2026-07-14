@@ -12,6 +12,15 @@
 
 ---
 
+## 🔗 Live Demo
+
+- **App**: [food-rescue-nine.vercel.app](https://food-rescue-nine.vercel.app)
+- **API**: [food-rescue-dmyt.onrender.com](https://food-rescue-dmyt.onrender.com)
+
+> ⚠️ **Note**: The backend runs on Render's free tier, which spins down after periods of inactivity. The first request after idle time may take 30–50 seconds to respond while the server wakes up — subsequent requests will be fast.
+
+---
+
 ## 📸 Screenshots
 
 <img width="940" height="448" alt="image" src="https://github.com/user-attachments/assets/083a9afa-87af-4edc-a386-cbbf1175258d" />
@@ -27,7 +36,6 @@
 <img width="940" height="447" alt="image" src="https://github.com/user-attachments/assets/04c0f212-e3df-4215-b1c1-2c28e968a23f" />
 <img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/3873f2d8-bc9d-4f83-b483-7bf949b09d78" />
 <img width="940" height="449" alt="image" src="https://github.com/user-attachments/assets/91aaab9b-0674-45ab-8482-92c528091799" />
-
 
 **NGO**
 
@@ -139,18 +147,24 @@ Create a `.env` file inside `backend/`:
 
 ```env
 PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
+NODE_ENV=development
+MONGODB_URI=your_mongodb_connection_string
+JWT_ACCESS_SECRET=your_access_secret
+JWT_REFRESH_SECRET=your_refresh_secret
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
 
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 
-# Optional: OAuth credentials
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-FACEBOOK_APP_ID=
-FACEBOOK_APP_SECRET=
+CORS_ORIGIN=http://localhost:5173
+```
+
+Create a `.env` file inside `frontend/`:
+
+```env
+VITE_API_URL=http://localhost:5000/api/v1
 ```
 
 ### Run Locally
@@ -173,6 +187,8 @@ cd ../frontend && npm run dev
 | **NGO** | Browse available food → claim → choose self-pickup or assign a volunteer → upload distribution proof |
 | **Volunteer** | Find nearby tasks → accept → mark picked up → mark delivered + upload photo |
 | **Admin** | Verify/block users → view platform-wide stats → override mission status if needed |
+
+Admin accounts are created separately at `/admin/register` and log in at `/admin/login`.
 
 ---
 
@@ -201,12 +217,14 @@ Food-Rescue/
 
 ## ☁️ Deployment
 
-| Service | Recommended Platform |
+| Service | Platform Used |
 |---|---|
-| Backend | Render, Heroku, or any Node.js VPS |
-| Frontend | Vercel or Netlify (Vite static build) |
+| Backend | [Render](https://render.com) |
+| Frontend | [Vercel](https://vercel.com) |
 | Database | MongoDB Atlas |
 | Images | Cloudinary |
+
+Both `backend/` and `frontend/` are deployed as separate services from this monorepo, using each platform's **Root Directory** setting to point to the correct subfolder. The frontend includes a `vercel.json` rewrite rule so client-side routes (e.g. `/admin/login`) resolve correctly on direct navigation and refresh.
 
 ---
 
