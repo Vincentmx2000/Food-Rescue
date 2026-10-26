@@ -1,9 +1,16 @@
 import axios from 'axios';
 
+// Production timeout configured for Render free-tier cold starts (default 60 seconds)
+const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 60000;
+
+export const getApiBaseUrl = () => {
+    return import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+};
+
 // Create axios instance
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
-    timeout: 10000,
+    baseURL: getApiBaseUrl(),
+    timeout: API_TIMEOUT,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -21,13 +28,25 @@ apiClient.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor for error handling
+// Response interceptor for error handling with user-friendly messages
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
             localStorage.removeItem('authToken');
         }
+
+        // Map technical errors to user-friendly messages
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+            error.userMessage = 'The server took too long to respond (it may be waking up from idle mode). Please wait a moment and try again.';
+        } else if (!error.response && error.request) {
+            error.userMessage = 'Unable to connect to the server. The backend may be offline or starting up. Please try again shortly.';
+        } else if (error.response?.status === 503) {
+            error.userMessage = error.response.data?.message || 'Server is temporarily initializing. Please try again in a moment.';
+        } else {
+            error.userMessage = error.response?.data?.message || error.message || 'An unexpected error occurred. Please try again.';
+        }
+
         return Promise.reject(error);
     }
 );
@@ -136,6 +155,18 @@ export const api = {
         const response = await apiClient.post('/auth/register', userData);
         const { user, accessToken } = response.data.data;
         return { user: normalize(user), accessToken };
+    },
+    checkHealth: async () => {
+        try {
+            // Health endpoint is at /health (or /api/v1/health)
+            const response = await apiClient.get('/health', { timeout: 15000 });
+            return response.data;
+        } catch (error) {
+            return {
+                status: 'UNAVAILABLE',
+                message: error.userMessage || 'Backend health check failed'
+            };
+        }
     },
 
     // Donations

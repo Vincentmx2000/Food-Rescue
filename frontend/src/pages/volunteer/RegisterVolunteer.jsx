@@ -16,6 +16,7 @@ const RegisterVolunteer = () => {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isWakingUp, setIsWakingUp] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -24,7 +25,9 @@ const RegisterVolunteer = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
+        // Prevent duplicate registration submissions
+        if (loading) return;
         setError('');
 
         if (formData.password !== formData.confirmPassword) {
@@ -33,6 +36,12 @@ const RegisterVolunteer = () => {
         }
 
         setLoading(true);
+        setIsWakingUp(false);
+
+        // Notify user if backend is waking up from free-tier idle sleep (>4s)
+        const wakingTimer = setTimeout(() => {
+            setIsWakingUp(true);
+        }, 4000);
 
         try {
             await register({
@@ -45,9 +54,11 @@ const RegisterVolunteer = () => {
             });
             navigate('/volunteer/dashboard');
         } catch (err) {
-            setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
+            setError(err.userMessage || err.response?.data?.message || err.message || 'Registration failed. Please try again.');
         } finally {
+            clearTimeout(wakingTimer);
             setLoading(false);
+            setIsWakingUp(false);
         }
     };
 
@@ -165,10 +176,28 @@ const RegisterVolunteer = () => {
                         </div>
                     </div>
 
+                    {/* Cold start waking notice */}
+                    {isWakingUp && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl flex items-center space-x-2">
+                            <svg className="animate-spin h-4 w-4 text-amber-600 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                            <span>The server is waking up from idle mode (Render free tier). This can take 30–50 seconds on the first request. Please wait...</span>
+                        </div>
+                    )}
+
                     {/* Error Message */}
                     {error && (
-                        <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl text-center">
-                            {error}
+                        <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl text-center space-y-1">
+                            <p>{error}</p>
+                            <button
+                                type="button"
+                                onClick={() => handleSubmit()}
+                                className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline"
+                            >
+                                Try Again
+                            </button>
                         </div>
                     )}
 
@@ -178,7 +207,9 @@ const RegisterVolunteer = () => {
                         disabled={loading}
                         className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl shadow-lg shadow-primary-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                     >
-                        {loading ? 'Creating Account...' : 'Register as Volunteer'}
+                        {loading
+                            ? (isWakingUp ? 'Waking server & creating account...' : 'Creating Account...')
+                            : 'Register as Volunteer'}
                     </button>
 
                     {/* Login Link */}

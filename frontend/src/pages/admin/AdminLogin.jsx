@@ -12,20 +12,31 @@ const AdminLogin = () => {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isWakingUp, setIsWakingUp] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
+        // Prevent duplicate login submissions
+        if (loading) return;
         setError('');
         setLoading(true);
+        setIsWakingUp(false);
+
+        // Notify user if backend is waking up from free-tier idle sleep (>4s)
+        const wakingTimer = setTimeout(() => {
+            setIsWakingUp(true);
+        }, 4000);
 
         try {
             await login(formData.email, formData.password, 'admin');
             navigate('/admin/dashboard');
         } catch (err) {
-            setError(err.response?.data?.message || err.message || 'Admin login failed. Please check credentials.');
+            setError(err.userMessage || err.response?.data?.message || err.message || 'Admin login failed. Please check credentials.');
         } finally {
+            clearTimeout(wakingTimer);
             setLoading(false);
+            setIsWakingUp(false);
         }
     };
 
@@ -96,10 +107,28 @@ const AdminLogin = () => {
                             </div>
                         </div>
 
+                        {/* Cold start waking notice */}
+                        {isWakingUp && (
+                            <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs rounded-2xl flex items-center space-x-2">
+                                <svg className="animate-spin h-4 w-4 text-amber-400 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                <span>The server is waking up from idle mode (Render free tier). This can take 30–50 seconds on the first request. Please wait...</span>
+                            </div>
+                        )}
+
                         {/* Error Message */}
                         {error && (
-                            <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-2xl text-center font-medium">
-                                {error}
+                            <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-2xl text-center font-medium space-y-1">
+                                <p>{error}</p>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSubmit()}
+                                    className="text-xs font-semibold text-primary-400 hover:text-primary-300 underline"
+                                >
+                                    Try Again
+                                </button>
                             </div>
                         )}
 
@@ -109,7 +138,7 @@ const AdminLogin = () => {
                             disabled={loading}
                             className="w-full py-4 bg-primary-600 hover:bg-primary-500 text-white font-black rounded-2xl shadow-xl shadow-primary-600/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest text-xs"
                         >
-                            {loading ? 'Logging in...' : 'Sign In'}
+                            {loading ? (isWakingUp ? 'Waking server...' : 'Logging in...') : 'Sign In'}
                         </button>
 
                         {/* Register Link */}
