@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { FiClock, FiCheckCircle, FiPackage } from 'react-icons/fi';
+import { FiClock, FiCheckCircle, FiPackage, FiArrowRight } from 'react-icons/fi';
 import Navbar from '../../components/Navbar.jsx';
 import { api } from '../../services/api.js';
 
@@ -52,7 +52,7 @@ const VolunteerDashboard = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="mb-12 animate-fade-in text-center md:text-left">
                     <h1 className="text-5xl font-black text-slate-900 mb-3 tracking-tight">
-                        Welcome back, <span className="text-primary-600">{user?.name}</span>! 👋
+                        Welcome back, <span className="text-primary-600">{user?.name}</span>!
                     </h1>
                     <p className="text-xl text-slate-500 font-medium tracking-tight">Your help makes a real Difference. Ready for your next mission?</p>
 
@@ -117,9 +117,9 @@ const VolunteerDashboard = () => {
                         <h2 className="text-3xl font-black text-slate-900 tracking-tight">Urgent Missions</h2>
                         <Link
                             to="/volunteer/deliveries"
-                            className="text-primary-600 font-black text-xs uppercase tracking-[0.2em] hover:text-primary-800 transition-colors"
+                            className="text-primary-600 font-black text-xs uppercase tracking-[0.2em] hover:text-primary-800 transition-colors inline-flex items-center"
                         >
-                            Explore All <span className="ml-2">→</span>
+                            Explore All <FiArrowRight className="ml-2 w-3.5 h-3.5" />
                         </Link>
                     </div>
 

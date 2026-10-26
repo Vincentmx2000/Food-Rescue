@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🍱 Food Rescue
 
 > Bridging the gap between surplus food and hunger — connecting Donors, NGOs, and Volunteers through a transparent, real-time logistics platform.
@@ -138,10 +139,70 @@ cd backend && npm install
 
 # Install frontend dependencies
 cd ../frontend && npm install
+=======
+# Food Rescue
+
+A full-stack web application designed to reduce food waste by connecting surplus food donors with NGOs and volunteers. The platform enables donors to publish available food, NGOs to claim and manage pickups, volunteers to accept delivery tasks, and admins to oversee platform activity.
+
+## Key Features
+
+- Role-based access for Donors, NGOs, Volunteers, and Admins
+- Donation creation with multi-image upload and location data
+- Real-time donation browsing and claiming for NGOs
+- Volunteer assignment and broadcasting system for pickup logistics
+- Proof of distribution with image upload
+- Feedback and rating system for verification
+- Notification delivery for status updates and task assignments
+- Interactive map support with Leaflet for location coordination
+
+## Project Structure
+
+- `backend/` - Express.js API server
+  - `src/controllers/` - Route logic for auth, donations, NGOs, volunteers, users, feedback, and notifications
+  - `src/models/` - Mongoose schemas for User, Donation, Claim, VolunteerTask, Feedback, Notification
+  - `src/routes/` - API route definitions
+  - `src/middlewares/` - Authentication, validation, and error handling
+  - `src/utils/` - Shared helpers and response utilities
+  - `src/config/` - Passport, Cloudinary, and other service configuration
+
+- `frontend/` - React application built with Vite
+  - `src/pages/` - Pages for donation details, auth, dashboards, and role-specific views
+  - `src/components/` - Shared UI components like Navbar, Modal, DonationCard, ProtectedRoute
+  - `src/context/` - Auth and Notification providers
+  - `src/services/` - API service layer for backend communication
+
+## Technologies Used
+
+- Frontend: React, Vite, Tailwind CSS, React Router, Leaflet, Axios
+- Backend: Node.js, Express, MongoDB, Mongoose, JWT, Passport OAuth, Cloudinary
+- Other tools: ESLint, PostCSS
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js v18 or later
+- MongoDB (local or Atlas)
+- Git
+
+### Install Dependencies
+
+From the repository root:
+
+```bash
+# Backend dependencies
+cd backend
+npm install
+
+# Frontend dependencies
+cd ../frontend
+npm install
+>>>>>>> e2cde00 (Update UI components)
 ```
 
 ### Environment Setup
 
+<<<<<<< HEAD
 Create a `.env` file inside `backend/`:
 
 ```env
@@ -238,3 +299,54 @@ Both `backend/` and `frontend/` are deployed as separate services from this mono
 ## 📄 License
 
 Built as a final year MCA project for academic and demonstration purposes.
+=======
+Create `.env` files as needed for the backend and provide configuration values such as:
+
+- `PORT`
+- `MONGO_URI`
+- `JWT_SECRET`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- OAuth credentials for Google/Facebook if social login is enabled
+
+### Run the Application
+
+```bash
+# Start backend server
+cd backend
+npm run dev
+
+# Start frontend dev server
+cd ../frontend
+npm run dev
+```
+
+The frontend will usually run at `http://localhost:5173` and the backend API at a separate port like `http://localhost:5000`.
+
+## User Roles
+
+- **Donor**: Creates and manages donation posts, uploads food images, tracks donation status.
+- **NGO**: Browses available donations, claims items, assigns volunteers or self-picks up donations, uploads proof of delivery.
+- **Volunteer**: Views available pickup tasks, accepts assignments, and helps deliver donations.
+- **Admin**: Manages users, verifies accounts, and monitors platform operations.
+
+## Deployment Notes
+
+- Backend is ready for deployment to platforms like Heroku, Render, or a VPS with Node.js support.
+- Frontend is built with Vite and can be deployed to static hosts like Netlify or Vercel.
+- Use Cloudinary or another file hosting service for image uploads.
+- Configure MongoDB Atlas for production database hosting.
+
+## Documentation
+
+Refer to the provided project documentation for full system design, implementation details, and testing information:
+
+- `FINAL_DOCUMENTATION.md`
+- `IMPLEMENTATION_SUMMARY.md`
+- `TESTING_GUIDE.md`
+
+## License
+
+This repository is provided for academic and demonstration purposes.
+>>>>>>> e2cde00 (Update UI components)

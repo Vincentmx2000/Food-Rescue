@@ -75,7 +75,7 @@ const NGODashboard = () => {
                 {/* Header */}
                 <div className="mb-16 animate-fade-in">
                     <h1 className="text-6xl font-black text-black mb-4 tracking-tighter">
-                        Welcome, {user?.name.toLowerCase()}! 🤝
+                        Welcome, {user?.name.toLowerCase()}!
                     </h1>
                     <p className="text-xl text-slate-500 font-medium tracking-tight">Help bridge the gap by claiming and distributing food to those in need.</p>
                 </div>

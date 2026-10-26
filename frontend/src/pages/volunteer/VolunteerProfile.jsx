@@ -4,7 +4,7 @@ import Navbar from '../../components/Navbar.jsx';
 import {
     FiUser, FiMail, FiSave,
     FiCheckCircle, FiAlertCircle, FiLock,
-    FiLogOut, FiCamera, FiCalendar, FiActivity, FiX
+    FiLogOut, FiCamera, FiCalendar, FiActivity, FiX, FiChevronRight
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api.js';
@@ -449,7 +449,7 @@ const VolunteerProfile = () => {
                                 <FiLock className="text-slate-400 group-hover:text-primary-600" />
                                 <span className="font-semibold">Change Password</span>
                             </div>
-                            <span className="text-slate-300">→</span>
+                            <FiChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary-600 group-hover:translate-x-0.5 transition-transform" />
                         </button>
                         <div className="pt-4 mt-4 border-t border-slate-100">
                             <button

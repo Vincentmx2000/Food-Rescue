@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Navbar from '../../components/Navbar.jsx';
-import { FiUser, FiMail, FiPhone, FiMapPin, FiClock, FiSave, FiPackage, FiCheckCircle, FiAlertCircle, FiLock, FiLogOut, FiCamera, FiX } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiMapPin, FiClock, FiSave, FiPackage, FiCheckCircle, FiAlertCircle, FiLock, FiLogOut, FiCamera, FiX, FiChevronRight } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api.js';
 import Modal from '../../components/Modal.jsx';
@@ -476,7 +476,7 @@ const DonorProfile = () => {
                                     className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 text-slate-700 transition-colors group"
                                 >
                                     <span className="font-medium group-hover:text-primary-600">Change Password</span>
-                                    <span className="text-slate-400">→</span>
+                                    <FiChevronRight className="w-4 h-4 text-slate-400 group-hover:text-primary-600 group-hover:translate-x-0.5 transition-transform" />
                                 </button>
                                 <div className="pt-2">
                                     <button

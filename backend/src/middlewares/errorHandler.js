@@ -19,7 +19,7 @@ export const errorHandler = (err, req, res, next) => {
                 message: err.message,
             });
         } else {
-            console.error('ERROR 💥', err);
+            console.error('ERROR [Unhandled]:', err);
             res.status(500).json({
                 success: false,
                 message: 'Something went wrong!',

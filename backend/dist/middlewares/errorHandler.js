@@ -21,7 +21,7 @@ const errorHandler = (err, req, res, next) => {
             });
         }
         else {
-            console.error('ERROR 💥', err);
+            console.error('ERROR [Unhandled]:', err);
             res.status(500).json({
                 success: false,
                 message: 'Something went wrong!',

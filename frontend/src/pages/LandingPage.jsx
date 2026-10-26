@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import heroImage from '../assets/hero_landing.png';
 import ngoImage from '../assets/ngo_support.png';
-import { FaHandHoldingHeart, FaTruck, FaUsers, FaLeaf, FaArrowRight, FaShieldAlt, FaHeart } from 'react-icons/fa';
+import { FaHandHoldingHeart, FaTruck, FaUsers, FaLeaf, FaArrowRight, FaShieldAlt, FaHeart, FaUtensils } from 'react-icons/fa';
 
 const LandingPage = () => {
     return (
@@ -62,7 +62,7 @@ const LandingPage = () => {
                                 <div className="absolute -bottom-6 -left-6 bg-white p-5 rounded-2xl shadow-xl border border-slate-100 animate-slide-up animation-delay-500">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xl">
-                                            🥗
+                                            <FaUtensils className="w-5 h-5 text-green-600" />
                                         </div>
                                         <div>
                                             <p className="text-2xl font-black text-slate-900">5k+</p>
@@ -73,7 +73,7 @@ const LandingPage = () => {
                                 <div className="absolute -top-6 -right-6 bg-white p-5 rounded-2xl shadow-xl border border-slate-100 animate-slide-up">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center text-xl">
-                                            ❤️
+                                            <FaHeart className="w-5 h-5 text-pink-600" />
                                         </div>
                                         <div>
                                             <p className="text-lg font-black text-slate-900">Real-time</p>

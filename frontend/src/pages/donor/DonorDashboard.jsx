@@ -59,7 +59,7 @@ const DonorDashboard = () => {
                 {/* Header */}
                 <div className="mb-16 animate-fade-in">
                     <h1 className="text-6xl font-black text-black mb-4 tracking-tighter">
-                        Welcome back, {user?.name.toLowerCase()}! 👋
+                        Welcome back, {user?.name.toLowerCase()}!
                     </h1>
                     <p className="text-xl text-slate-500 font-medium tracking-tight">Manage your food donations and track your impact on the community.</p>
                 </div>

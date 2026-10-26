@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Navbar from '../../components/Navbar.jsx';
-import { FiUser, FiMail, FiPhone, FiMapPin, FiClock, FiSave, FiPackage, FiCheckCircle, FiAlertCircle, FiLock, FiLogOut, FiUsers, FiGlobe, FiBriefcase, FiCamera, FiX } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiMapPin, FiClock, FiSave, FiPackage, FiCheckCircle, FiAlertCircle, FiLock, FiLogOut, FiUsers, FiGlobe, FiBriefcase, FiCamera, FiX, FiChevronDown, FiChevronRight } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api.js';
 import Modal from '../../components/Modal.jsx';
@@ -315,7 +315,9 @@ const NGOProfile = () => {
                                                 <option value="Orphanage">Orphanage</option>
                                                 <option value="Community Center">Community Center</option>
                                             </select>
-                                            <div className="absolute right-3 top-3 text-slate-400 pointer-events-none">▼</div>
+                                            <div className="absolute right-3 top-3.5 text-slate-400 pointer-events-none">
+                                                <FiChevronDown size={16} />
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="space-y-2">
@@ -546,7 +548,7 @@ const NGOProfile = () => {
                                     className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 text-slate-700 transition-colors group"
                                 >
                                     <span className="font-medium group-hover:text-primary-600">Change Password</span>
-                                    <span className="text-slate-400">→</span>
+                                    <FiChevronRight className="w-4 h-4 text-slate-400 group-hover:text-primary-600 group-hover:translate-x-0.5 transition-transform" />
                                 </button>
                                 <div className="pt-2">
                                     <button
