@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # 🍱 Food Rescue
 
 > Bridging the gap between surplus food and hunger — connecting Donors, NGOs, and Volunteers through a transparent, real-time logistics platform.
@@ -349,4 +349,4 @@ Refer to the provided project documentation for full system design, implementati
 ## License
 
 This repository is provided for academic and demonstration purposes.
->>>>>>> e2cde00 (Update UI components)
+
