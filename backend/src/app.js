@@ -15,6 +15,7 @@ import feedbackRoutes from './routes/feedbackRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { checkDbReady } from './middlewares/checkDbReady.js';
+import { getDbDiagnosticStatus } from './config/db.js';
 import passport from './config/passport.js';
 
 const app = express();
@@ -72,19 +73,31 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Health check endpoints (available on both root and API version paths)
 const getHealth = (req, res) => {
-    const dbStates = ['disconnected', 'connected', 'connecting', 'disconnecting'];
-    const dbState = dbStates[mongoose.connection.readyState] || 'unknown';
-    const isHealthy = mongoose.connection.readyState === 1;
+    const diag = getDbDiagnosticStatus();
+    const isHealthy = diag.isConnected;
 
     res.status(isHealthy ? 200 : 503).json({
         status: isHealthy ? 'OK' : 'DEGRADED',
         server: 'up',
-        database: dbState,
+        database: diag.state,
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
+        diagnostics: {
+            configuredVar: diag.configuredVar,
+            targetHost: diag.targetHost,
+            isAtlas: diag.isAtlas,
+            reconnectAttempts: diag.attempts,
+            lastError: diag.lastError ? {
+                code: diag.lastError.code,
+                summary: diag.lastError.summary,
+                actionRecommendation: diag.lastError.actionRecommendation,
+                timestamp: diag.lastError.timestamp,
+            } : null,
+            lastConnectedAt: diag.lastConnectedAt,
+        },
         message: isHealthy
             ? 'Food Rescue API is healthy'
-            : 'Backend is up; database is currently initializing or reconnecting'
+            : (diag.lastError?.actionRecommendation || 'Backend is up; database is currently initializing or reconnecting')
     });
 };
 

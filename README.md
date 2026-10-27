@@ -197,12 +197,10 @@ npm install
 # Frontend dependencies
 cd ../frontend
 npm install
->>>>>>> e2cde00 (Update UI components)
 ```
 
 ### Environment Setup
 
-<<<<<<< HEAD
 Create a `.env` file inside `backend/`:
 
 ```env
@@ -299,30 +297,25 @@ Both `backend/` and `frontend/` are deployed as separate services from this mono
 ## 📄 License
 
 Built as a final year MCA project for academic and demonstration purposes.
-=======
-Create `.env` files as needed for the backend and provide configuration values such as:
 
-- `PORT`
-- `MONGO_URI`
-- `JWT_SECRET`
+---
+
+## ⚙️ Environment Configuration
+
+Both `MONGODB_URI` and `MONGO_URI` are supported in backend configuration:
+
+- `PORT` (e.g. 5000)
+- `MONGODB_URI` or `MONGO_URI` (MongoDB connection string, e.g. from MongoDB Atlas)
+- `JWT_ACCESS_SECRET` or `JWT_SECRET` (Secret key for signing access tokens)
+- `JWT_REFRESH_SECRET` (Secret key for refresh tokens)
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
-- OAuth credentials for Google/Facebook if social login is enabled
+- `CORS_ORIGIN` (Optional comma-separated allowed origins)
 
-### Run the Application
+> 💡 **MongoDB Atlas Tip**: Ensure Network Access in MongoDB Atlas has `0.0.0.0/0` (Allow Access from Anywhere) enabled so cloud hosts like Render can connect. Free-tier (M0) clusters pause after 60 days of inactivity; if paused, click **Resume** in your MongoDB Atlas dashboard.
 
-```bash
-# Start backend server
-cd backend
-npm run dev
-
-# Start frontend dev server
-cd ../frontend
-npm run dev
-```
-
-The frontend will usually run at `http://localhost:5173` and the backend API at a separate port like `http://localhost:5000`.
+---
 
 ## User Roles
 

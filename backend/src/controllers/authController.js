@@ -105,7 +105,8 @@ export const refreshToken = async (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+        const refreshSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'food_rescue_default_refresh_secret_2026';
+        const decoded = jwt.verify(token, refreshSecret);
         const user = await User.findById(decoded.id).select('+refreshToken');
 
         if (!user || user.refreshToken !== token) {

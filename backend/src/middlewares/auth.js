@@ -16,8 +16,8 @@ export const protect = async (req, res, next) => {
     }
 
     try {
-        console.log('Verifying token:', token.substring(0, 10) + '...');
-        const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+        const accessSecret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'food_rescue_default_access_secret_2026';
+        const decoded = jwt.verify(token, accessSecret);
         console.log('Token decoded successfully for user:', decoded.id);
         const user = await User.findById(decoded.id);
 
