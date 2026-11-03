@@ -7,19 +7,27 @@ export const errorHandler = (err, req, res, next) => {
     error.statusCode = err.statusCode || 500;
     error.status = err.status || 'error';
 
-    // 1. Mongoose Database Connectivity & Timeout Errors
+    // 1. Mongoose / MongoDB Database Connectivity & Timeout Errors
     if (
         err.name === 'MongooseServerSelectionError' ||
         err.name === 'MongoNetworkError' ||
         err.name === 'MongoTimeoutError' ||
         err.name === 'MongoServerSelectionError' ||
-        (err.message && err.message.includes('buffering timed out'))
+        err.name === 'MongoNetworkTimeoutError' ||
+        err.name === 'MongoNotConnectedError' ||
+        (err.message && (
+            err.message.includes('buffering timed out') ||
+            err.message.includes('Client must be connected') ||
+            err.message.includes('topology was destroyed')
+        ))
     ) {
-        console.error('❌ [Database Request Failure]:', err.message);
+        console.error('[Database Request Failure]:', err.message);
+        res.setHeader('Retry-After', '5');
         return res.status(503).json({
             success: false,
             message: 'Database service is temporarily unavailable. Please try again in a few moments.',
-            code: 'DB_UNAVAILABLE'
+            code: 'DB_UNAVAILABLE',
+            retryAfter: 5,
         });
     }
 
@@ -74,4 +82,3 @@ export const errorHandler = (err, req, res, next) => {
         }
     }
 };
-

@@ -5,6 +5,15 @@ import { validate } from '../middlewares/validate.js';
 import passport from 'passport';
 import { generateAccessToken, generateRefreshToken } from '../utils/token.js';
 
+const getClientOrigin = () => {
+    if (process.env.CORS_ORIGIN) {
+        return process.env.CORS_ORIGIN.split(',')[0].trim();
+    }
+    return process.env.NODE_ENV === 'production'
+        ? 'https://food-rescue-nine.vercel.app'
+        : 'http://localhost:5173';
+};
+
 const router = Router();
 
 router.post('/register', registerValidator, validate, register);
@@ -39,7 +48,8 @@ router.get('/google/callback',
         });
 
         // Redirect to frontend with access token in URL
-        res.redirect(`${process.env.CORS_ORIGIN}/social-success?token=${accessToken}&role=${user.role}&name=${encodeURIComponent(user.name)}`);
+        const clientOrigin = getClientOrigin();
+        res.redirect(`${clientOrigin}/social-success?token=${accessToken}&role=${user.role}&name=${encodeURIComponent(user.name)}`);
     }
 );
 
@@ -69,7 +79,8 @@ router.get('/facebook/callback',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
-        res.redirect(`${process.env.CORS_ORIGIN}/social-success?token=${accessToken}&role=${user.role}&name=${encodeURIComponent(user.name)}`);
+        const clientOrigin = getClientOrigin();
+        res.redirect(`${clientOrigin}/social-success?token=${accessToken}&role=${user.role}&name=${encodeURIComponent(user.name)}`);
     }
 );
 

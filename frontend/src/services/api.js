@@ -28,21 +28,42 @@ apiClient.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor for error handling with user-friendly messages
+// Response interceptor for error handling with user-friendly messages and transient 503 retry
 apiClient.interceptors.response.use(
     (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            localStorage.removeItem('authToken');
+    async (error) => {
+        const originalRequest = error.config;
+
+        // Auto-retry transient 503 (DB_CONNECTING / DB_UNAVAILABLE) once after a short pause
+        if (
+            error.response?.status === 503 &&
+            originalRequest &&
+            !originalRequest._retry &&
+            (error.response.data?.code === 'DB_CONNECTING' || error.response.data?.code === 'DB_UNAVAILABLE')
+        ) {
+            originalRequest._retry = true;
+            console.log('[API] Backend database is warming up. Retrying request in 2 seconds...');
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            return apiClient(originalRequest);
         }
 
-        // Map technical errors to user-friendly messages
-        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        if (error.response?.status === 401) {
+            localStorage.removeItem('authToken');
+            error.userMessage = error.response.data?.message || 'Invalid email or password. Please check your credentials.';
+            error.isAuthError = true;
+        } else if (error.response?.status === 400) {
+            error.userMessage = error.response.data?.message || 'Invalid request. Please check the entered information.';
+        } else if (error.response?.status === 403) {
+            error.userMessage = error.response.data?.message || 'Access denied or account is blocked.';
+        } else if (error.response?.status === 503) {
+            error.userMessage = error.response.data?.message || 'Database service is currently unavailable. Please verify backend database configuration.';
+            error.isDbUnavailable = true;
+        } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
             error.userMessage = 'The server took too long to respond (it may be waking up from idle mode). Please wait a moment and try again.';
+            error.isTimeout = true;
         } else if (!error.response && error.request) {
             error.userMessage = 'Unable to connect to the server. The backend may be offline or starting up. Please try again shortly.';
-        } else if (error.response?.status === 503) {
-            error.userMessage = error.response.data?.message || 'Server is temporarily initializing. Please try again in a moment.';
+            error.isNetworkError = true;
         } else {
             error.userMessage = error.response?.data?.message || error.message || 'An unexpected error occurred. Please try again.';
         }

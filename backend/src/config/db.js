@@ -15,6 +15,10 @@ const dbDiagnostics = {
     lastConnectedAt: null,
 };
 
+let connectionPromise = null;
+let retryTimeout = null;
+let isShuttingDown = false;
+
 /**
  * Resolve and sanitize the MongoDB URI from supported environment variables.
  * Checks MONGODB_URI, MONGO_URI, and DATABASE_URL in order of priority.
@@ -76,14 +80,14 @@ export const resolveMongoUri = () => {
  * Categorize error and provide actionable advice without leaking sensitive credentials.
  */
 const analyzeMongoError = (error) => {
-    const msg = error.message || '';
-    const errCode = error.code || '';
+    const msg = error?.message || '';
+    const errCode = error?.code || '';
 
     if (msg.includes('querySrv ENOTFOUND') || errCode === 'ENOTFOUND') {
         return {
             code: 'DNS_ENOTFOUND_CLUSTER_PAUSED_OR_INVALID',
             summary: `DNS SRV record lookup failed for host '${dbDiagnostics.targetHost}'.`,
-            actionRecommendation: 'MongoDB Atlas hostname could not be found via DNS. If you are using a free-tier M0 cluster, Atlas automatically pauses clusters after inactivity (removing its DNS records). Log into cloud.mongodb.com and click Resume on your cluster.',
+            actionRecommendation: 'MongoDB Atlas hostname could not be found via DNS. If using a free-tier M0 cluster, Atlas automatically pauses clusters after inactivity (removing DNS records). Log into cloud.mongodb.com and click Resume on your cluster.',
         };
     }
 
@@ -118,50 +122,123 @@ const analyzeMongoError = (error) => {
     };
 };
 
-let retryTimeout = null;
-
 /**
- * Connect to MongoDB with backoff retry and safe diagnostic logging.
+ * Single reusable MongoDB connection manager.
+ * Prevents multiple simultaneous connection attempts and guarantees a singleton lifecycle.
  */
 export const connectToDatabase = async (attempt = 1) => {
+    if (isShuttingDown) return;
+
+    // If already connected, return the existing connection
+    if (mongoose.connection.readyState === 1) {
+        dbDiagnostics.isConnected = true;
+        dbDiagnostics.state = 'connected';
+        return mongoose.connection;
+    }
+
+    // If a connection attempt is actively in-flight, return the existing promise
+    if (connectionPromise) {
+        return connectionPromise;
+    }
+
     const { uri, varName, isFallback } = resolveMongoUri();
     dbDiagnostics.attempts = attempt;
 
     if (isFallback && process.env.NODE_ENV === 'production') {
-        console.warn('⚠️ [MongoDB Warning] Neither MONGODB_URI nor MONGO_URI found in environment variables. Falling back to localhost in production!');
+        console.warn('[MongoDB Warning] Neither MONGODB_URI nor MONGO_URI found in environment variables. Falling back to localhost in production!');
     } else {
         console.log(`[MongoDB] Connecting using '${varName}' to '${dbDiagnostics.targetHost}' (attempt ${attempt})...`);
     }
 
-    try {
-        await mongoose.connect(uri, {
-            serverSelectionTimeoutMS: 5000,
-            connectTimeoutMS: 10000,
-        });
+    connectionPromise = (async () => {
+        try {
+            await mongoose.connect(uri, {
+                // High enough for cloud cold starts and TLS handshakes
+                serverSelectionTimeoutMS: 15000,
+                connectTimeoutMS: 15000,
+                // Keep-alive and pool settings for stability across cloud firewalls
+                socketTimeoutMS: 45000,
+                heartbeatFrequencyMS: 10000,
+                maxPoolSize: 10,
+                minPoolSize: 1,
+                family: 4, // Prefer IPv4 to avoid cloud IPv6 latency/DNS lookup failures
+            });
 
-        dbDiagnostics.isConnected = true;
-        dbDiagnostics.state = 'connected';
-        dbDiagnostics.lastError = null;
-        dbDiagnostics.lastConnectedAt = new Date().toISOString();
-        console.log(`✅ [MongoDB] Connection established successfully to '${dbDiagnostics.targetHost}'.`);
-    } catch (error) {
-        const errorAnalysis = analyzeMongoError(error);
-        dbDiagnostics.isConnected = false;
-        dbDiagnostics.state = 'disconnected';
-        dbDiagnostics.lastError = {
-            ...errorAnalysis,
-            rawMessage: error.message,
-            timestamp: new Date().toISOString(),
-        };
+            dbDiagnostics.isConnected = true;
+            dbDiagnostics.state = 'connected';
+            dbDiagnostics.lastError = null;
+            dbDiagnostics.lastConnectedAt = new Date().toISOString();
+            if (retryTimeout) {
+                clearTimeout(retryTimeout);
+                retryTimeout = null;
+            }
+            console.log(`[MongoDB] Connection established successfully to '${dbDiagnostics.targetHost}'.`);
+            return mongoose.connection;
+        } catch (error) {
+            const errorAnalysis = analyzeMongoError(error);
+            dbDiagnostics.isConnected = false;
+            dbDiagnostics.state = 'disconnected';
+            dbDiagnostics.lastError = {
+                ...errorAnalysis,
+                rawMessage: error.message,
+                timestamp: new Date().toISOString(),
+            };
 
-        console.error(`❌ [MongoDB] Connection failed (attempt ${attempt}): ${error.message}`);
-        console.error(`💡 [MongoDB Diagnostic] ${errorAnalysis.actionRecommendation}`);
+            console.error(`[MongoDB] Connection failed (attempt ${attempt}): ${error.message}`);
+            console.error(`[MongoDB Diagnostic] ${errorAnalysis.actionRecommendation}`);
 
-        // Retry with backoff (capped at 30 seconds), without exiting the process so health checks still respond
-        const delay = Math.min(attempt * 5000, 30000);
-        console.log(`[MongoDB] Scheduling reconnection attempt in ${delay / 1000}s...`);
-        retryTimeout = setTimeout(() => connectToDatabase(attempt + 1), delay);
+            if (!isShuttingDown) {
+                // Exponential backoff with jitter, capped at 30 seconds
+                const baseDelay = Math.min(attempt * 4000, 30000);
+                const jitter = Math.floor(Math.random() * 1000);
+                const delay = baseDelay + jitter;
+
+                if (retryTimeout) clearTimeout(retryTimeout);
+                console.log(`[MongoDB] Scheduling reconnection attempt in ${(delay / 1000).toFixed(1)}s...`);
+                retryTimeout = setTimeout(() => {
+                    retryTimeout = null;
+                    connectToDatabase(attempt + 1).catch(() => {});
+                }, delay);
+            }
+
+            throw error;
+        } finally {
+            connectionPromise = null;
+        }
+    })();
+
+    return connectionPromise;
+};
+
+/**
+ * Wait for the database connection to be ready.
+ * Resolves to true if connected within maxWaitMs, or false if not.
+ * Ensures incoming requests during a cold start do not fail immediately.
+ */
+export const waitForDatabase = async (maxWaitMs = 8000) => {
+    if (mongoose.connection.readyState === 1) {
+        return true;
     }
+
+    // Trigger connection if disconnected or not yet started
+    if (mongoose.connection.readyState === 0 && !connectionPromise) {
+        connectToDatabase().catch(() => {});
+    }
+
+    const startTime = Date.now();
+    return new Promise((resolve) => {
+        // Fast polling check every 150ms
+        const interval = setInterval(() => {
+            if (mongoose.connection.readyState === 1) {
+                clearInterval(interval);
+                return resolve(true);
+            }
+            if (Date.now() - startTime >= maxWaitMs) {
+                clearInterval(interval);
+                return resolve(mongoose.connection.readyState === 1);
+            }
+        }, 150);
+    });
 };
 
 /**
@@ -175,7 +252,11 @@ export const initMongooseEvents = () => {
         dbDiagnostics.state = 'connected';
         dbDiagnostics.lastError = null;
         dbDiagnostics.lastConnectedAt = new Date().toISOString();
-        console.log('✅ [MongoDB] Runtime connection event: connected.');
+        if (retryTimeout) {
+            clearTimeout(retryTimeout);
+            retryTimeout = null;
+        }
+        console.log('[MongoDB] Runtime connection event: connected.');
     });
 
     mongoose.connection.on('error', (err) => {
@@ -187,13 +268,22 @@ export const initMongooseEvents = () => {
             rawMessage: err.message,
             timestamp: new Date().toISOString(),
         };
-        console.error('❌ [MongoDB] Runtime connection error:', err.message);
+        console.error('[MongoDB] Runtime connection error:', err.message);
     });
 
     mongoose.connection.on('disconnected', () => {
         dbDiagnostics.isConnected = false;
         dbDiagnostics.state = 'disconnected';
-        console.warn('⚠️ [MongoDB] Runtime connection event: disconnected. Reconnecting...');
+        console.warn('[MongoDB] Runtime connection event: disconnected.');
+
+        // Actively trigger reconnection if disconnected unexpectedly during runtime
+        if (!isShuttingDown && !connectionPromise && !retryTimeout) {
+            console.log('[MongoDB] Triggering automatic reconnection in 2s...');
+            retryTimeout = setTimeout(() => {
+                retryTimeout = null;
+                connectToDatabase(1).catch(() => {});
+            }, 2000);
+        }
     });
 };
 
@@ -220,7 +310,11 @@ export const getDbDiagnosticStatus = () => {
  * Clean up connections during graceful shutdown.
  */
 export const closeDatabaseConnection = async () => {
-    if (retryTimeout) clearTimeout(retryTimeout);
+    isShuttingDown = true;
+    if (retryTimeout) {
+        clearTimeout(retryTimeout);
+        retryTimeout = null;
+    }
     if (mongoose.connection.readyState !== 0) {
         await mongoose.connection.close(false);
         console.log('[MongoDB] Connection closed cleanly.');
